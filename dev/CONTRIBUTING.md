@@ -32,8 +32,10 @@ Then run `python3 tools/check-public-docs.py docs`. Review all new public conten
 the checker is a regression guard, not a substitute for review. Register new
 public pages in the allowlist when appropriate. Main-branch pushes build, check
 and deploy only the generated site directory; pull requests do not deploy.
-Platform hostnames and account paths never go in the repository: the checker
-reads them from the `THIP_PRIVATE_PATTERNS` environment variable (a CI secret).
+Platform hostnames and account paths never go in the repository: the checkers
+read them from the `THIP_PRIVATE_PATTERNS` environment variable (a CI secret).
+This repository is public; `python3 tools/check-repo-files.py` scans tracked
+files on every push and pull request. See also `AGENTS.md`.
 
 Keep the README short: purpose, installation, one example and guide links.
 Put workflow teaching in vignettes, argument contracts in roxygen documentation,
