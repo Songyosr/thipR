@@ -1,0 +1,107 @@
+---
+title: "Start here: setup and connect"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Start here: setup and connect}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+Read one guide at a time. The first two describe THIP access; the last three
+run independently with synthetic data and no credentials.
+
+| Guide | Purpose |
+|---|---|
+| **1. Start here** | Installation, setup and table discovery (this page) |
+| [2. Prepare and filter sources](thip-sources.html) | Tables, dates and lazy ICD filtering |
+| [3. Retrieve time windows](time-windows.html) | Entry keys, boundaries and batching |
+| [4. Flag conditions locally](condition-flags.html) | Custom lists, matching and aggregation |
+| [5. Worked cohort example](getting-started.html) | Short end-to-end synthetic analysis |
+
+The remote snippets below are not executed during package builds. Run them in
+your authorized THIP R session. Column-name arguments use strings such as
+`date = "adm"`; ordinary dplyr verbs handle general manipulation.
+
+## Install or load thipR
+
+If thipR is already available in your THIP R session, use `library(thipR)` and
+continue to configuration below. For a new installation, install from GitHub
+into your own user library as shown. Installing thipR does not grant THIP
+database access.
+
+```{r install, eval=FALSE}
+install.packages("pak")  # Once, if needed
+
+# Use your own library, not the shared platform installation.
+lib <- path.expand("~/R/thipR-library")
+dir.create(lib, recursive = TRUE, showWarnings = FALSE)
+.libPaths(c(lib, .libPaths()))
+pak::pkg_install("ClickHouseHTTP@1.1.2", lib = lib)  # Tested backend, pinned
+pak::pak("Songyosr/thipR", lib = lib)
+library(thipR)
+```
+
+No source checkout in JupyterLab is required. Installation needs network access,
+package dependencies and, where required, a working compiler. thipR requires
+exactly ClickHouseHTTP 1.1.2 (the tested backend); installing it explicitly first
+keeps the recipe working after CRAN publishes a newer driver. Coordinate missing
+platform prerequisites with the maintainers. For a reproducible study, install a tested commit or release using
+`Songyosr/thipR@<commit-or-tag>` with an actual reviewed reference.
+
+At the start of later sessions using this custom library:
+
+```{r load, eval=FALSE}
+.libPaths(c(path.expand("~/R/thipR-library"), .libPaths()))
+library(thipR)
+```
+
+Restart an existing R kernel after upgrading an already-loaded package.
+A source archive (`.tar.gz`) is another installation option; builds that include
+vignettes support `vignette("getting-started", package = "thipR")` locally.
+
+## Configure once, connect each session
+
+```{r configure, eval=FALSE}
+library(thipR)
+thip_setup()
+```
+
+Setup prompts for missing configuration, uses masked password entry, verifies
+access by default, and saves configuration to the user's `.Renviron`. This is a
+permission-protected **plaintext** file, not encrypted storage. If the platform
+already supplies the `THIP_DB_*` variables, skip setup. Do not put credentials in
+notebook cells or a repository. A PC's Jupyter token is separate and is not used
+by thipR.
+
+```{r connect, eval=FALSE}
+library(thipR)
+library(dplyr)
+con <- thip_connect()
+thip_tables(con)
+thip_columns(con, "nhso2568")
+```
+
+`thip_connect()` uses two DB threads by default. Row/time limits inherit the
+platform settings unless supplied explicitly; overflow raises an error, not
+silent truncation. The package does not impose an arbitrary collection cap.
+DB thread settings are separate from R's `data.table` thread settings. Metadata
+from an individual `_local` shard does not describe the entire distributed table.
+
+## Finish a session
+
+```{r disconnect, eval=FALSE}
+DBI::dbDisconnect(con)
+```
+
+## Supported API and compatibility
+
+New code should use `tables = ...` and `dplyr::collect()`. Singular
+`thip_table(table = ...)` and `thip_collect()` are deprecated compatibility
+interfaces. `thip_disconnect()` is also deprecated; use `DBI::dbDisconnect()`.
+No connection argument is needed for `thip_filter_icd()` or `thip_window()` when
+the source already carries it.
+
+The currently tested backend is ClickHouseHTTP **1.1.2**; connection setup rejects
+other versions pending compatibility review. Vignette builds do not certify a
+live backend: opt-in read-only smoke scripts in `inst/examples/` cover that path.
+Next: [prepare and filter sources](thip-sources.html).

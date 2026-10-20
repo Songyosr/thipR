@@ -1,0 +1,41 @@
+url: https://songyosr.github.io/thipR/
+template:
+  bootstrap: 5
+home:
+  title: "thipR: read-only THIP workflows"
+navbar:
+  structure:
+    left: [intro, articles, reference, news]
+    right: [search, github]
+  components:
+    intro:
+      text: Start here
+      href: articles/start-here.html
+articles:
+- title: Learn the workflow
+  navbar: Guides
+  contents:
+  - start-here
+  - thip-sources
+  - time-windows
+  - condition-flags
+  - getting-started
+reference:
+- title: Setup and sources
+  contents:
+  - thip_setup
+  - thip_connect
+  - thip_tables
+  - thip_columns
+  - thip_table
+  - thip_date_audit
+- title: Filter, retrieve and flag
+  contents:
+  - thip_filter_icd
+  - thip_window
+  - collect.thip_window_plan
+  - icd_flag
+- title: Compatibility and convenience
+  contents:
+  - thip_disconnect
+  - thip_collect

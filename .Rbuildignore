@@ -1,0 +1,12 @@
+^\.git$
+^\.github$
+^\.gitignore$
+^\.Renviron\.example$
+^tools$
+^local-results$
+^data-private$
+^\.local-lib$
+^thipR\.Rproj$
+^_pkgdown\.yml$
+^docs$
+^dev$

@@ -1,0 +1,24 @@
+Package: thipR
+Title: Read-Only R Access to THIP Notebook Databases
+Version: 0.2.0
+Authors@R: person("Songyos", "Rajborirug", email = "songyos.r@psu.ac.th",
+    role = c("aut", "cre"))
+Description: A small connection and discovery layer over 'DBI',
+    'ClickHouseHTTP' and 'dbplyr' for THIP notebook users. Applies read-only
+    request settings and configurable limits, provides lazy multi-table access,
+    and supports metadata discovery without embedding platform credentials.
+    Flags user-defined ICD code sets using exact or prefix matching, with
+    sparse matrices for local data and lazy read-only filtering for ClickHouse
+    tables. Retrieves person-specific date windows in complete batches.
+    Does not supply clinical definitions.
+License: GPL-3
+Encoding: UTF-8
+Depends: R (>= 4.1)
+Imports: ClickHouseHTTP (== 1.1.2), DBI, dbplyr (>= 2.0.0), dplyr,
+    methods, utils, stats, Matrix, data.table
+Suggests: testthat (>= 3.0.0), knitr, rmarkdown, tibble, askpass, getPass, withr
+Config/testthat/edition: 3
+VignetteBuilder: knitr
+RoxygenNote: 7.3.3
+URL: https://songyosr.github.io/thipR/, https://github.com/Songyosr/thipR
+BugReports: https://github.com/Songyosr/thipR/issues

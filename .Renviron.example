@@ -1,0 +1,9 @@
+# Obtain these values from the THIP platform team. Do not commit real values.
+# Prefer thip_setup() once inside THIP to save them in your user .Renviron.
+# User-level storage is plaintext with owner-only permissions, not encryption.
+THIP_DB_HOST=
+THIP_DB_PORT=8123
+THIP_DB_NAME=thip
+THIP_DB_USER=
+THIP_DB_PASSWORD=
+THIP_DB_SCHEME=http

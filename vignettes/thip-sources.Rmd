@@ -1,0 +1,127 @@
+---
+title: "Prepare and filter sources"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Prepare and filter sources}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+[Guide index](start-here.html) | Guide 2 of 5
+
+These remote snippets are not executed during package builds. Start a THIP R
+session using the [setup guide](start-here.html), then connect:
+
+```{r connect, eval=FALSE}
+library(thipR)
+library(dplyr)
+con <- thip_connect()
+```
+
+## Prepare compatible tables and dates
+
+```{r table, eval=FALSE}
+ipd <- thip_table(
+  con, tables = c("nhso2567", "nhso2568"), .id = "source_table",
+  dates = c(adm = "dateadm", dsc = "datedsc", death = "death_date"),
+  date_format = c(adm = "%Y%m%d", dsc = "%Y%m%d", death = "%Y-%m-%d")
+)
+```
+
+This stacks compatible schemas using `UNION ALL`; it does not deduplicate,
+resolve identifiers or harmonize clinical meaning. Use distributed names, not
+`_local` tables. Keep incompatible sources, such as vaccinations and admissions,
+separate. `thip_columns()` uses singular `table` because it describes one table;
+`thip_table()` uses plural `tables` because it may combine several.
+
+Temporal mappings preserve original columns and add new ones. Formats are
+explicit: `%Y%m%d`, `%Y-%m-%d`, `%Y-%m-%d %H:%M:%S`, or
+`%Y-%m-%d %H:%M:%OS` (optional one to three fractional digits). You may supply one
+format per mapping group or a named format vector keyed by output name. This is
+a supported subset of R-style formats, not arbitrary `strptime()` syntax.
+Malformed/impossible dates and dates outside 1900–2299 become `NA`. Date output
+uses the source calendar date; requesting a date from timestamp text discards
+its time. Inspect original values when assessing missing or invalid dates.
+
+### Audit conversion explicitly
+
+Different columns can use different formats. The example above configures compact
+admission/discharge text and ISO death-date text; confirm the source contract for
+your selected tables. A single format applied to every field can turn nonblank
+death dates into missing values. Keep the raw columns until after the audit.
+
+```{r date-audit-db, eval=FALSE}
+# This executes aggregate SELECT queries; only the summary enters R.
+# Choose the source tables/scope deliberately: this can scan each selected field.
+date_quality <- thip_date_audit(
+  ipd,
+  columns = c(adm = "dateadm", dsc = "datedsc", death = "death_date"),
+  by = "source_table"
+)
+```
+
+Do this before filtering on `adm` or `death`: filtering out missing converted
+dates would conceal failures. The helper compares existing raw/converted pairs;
+it does not guess formats or repair values. Missing source text (`n_missing`),
+whitespace/empty strings (`n_blank`), successful nonblank conversions (`n_parsed`)
+and unsuccessful nonblank conversions (`n_failed`) are separate. A nonzero
+`n_inconsistent` means a missing/blank source has a nonmissing converted value.
+Successful parsing does not establish death ascertainment or clinical plausibility.
+
+Here is a runnable, entirely synthetic illustration of those categories. The
+converted column represents the strict conversion result, including an impossible
+date becoming missing.
+
+```{r date-audit-synthetic}
+example_dates <- data.frame(
+  raw = c("20240229", "20230229", "", "   ", NA_character_),
+  day = as.Date(c("2024-02-29", NA, NA, NA, NA))
+)
+thipR::thip_date_audit(example_dates, columns = c(day = "raw"))
+```
+
+For a COVID-style timestamp source, choose date-only or datetime deliberately:
+
+```{r datetime, eval=FALSE}
+vaccination_days <- thip_table(
+  con, tables = "covid2023",
+  dates = c(vaccination_day = "immunization_date"),
+  date_format = "%Y-%m-%d %H:%M:%OS"
+)
+
+# Set source_timezone only after the data provider confirms its meaning.
+# It must be an IANA zone name; do not infer it from your computer or locale.
+vaccination_times <- thip_table(
+  con, tables = "covid2023",
+  datetimes = c(vaccinated_at = "immunization_date"),
+  datetime_format = "%Y-%m-%d %H:%M:%OS",
+  timezone = source_timezone
+)
+```
+
+Datetime output preserves milliseconds. Offset-bearing text is not supported;
+ambiguous daylight-saving times require upstream resolution. `thip_window()`
+currently requires `Date` columns, not datetimes.
+
+## Filter in the DB, collect explicitly
+
+```{r query, eval=FALSE}
+query <- ipd |>
+  filter(adm >= as.Date("2023-10-01"), adm < as.Date("2023-10-08")) |>
+  thip_filter_icd(codes = "K35", cols = "pdx", match = "prefix")
+
+show_query(query)           # Inspect SQL
+candidate_rows <- collect(query)  # Admissions enter R here
+```
+
+`thip_filter_icd()` retains matching rows; it does not aggregate people or add
+flags. `icd_flag()` operates on local records and returns flags aggregated by
+an explicit ID. Neither function supplies validated clinical definitions.
+
+Building a lazy query may read metadata. Printing a lazy dbplyr table can fetch
+preview rows; `collect()` is not the only possible trigger for a DB query.
+Printing a `thip_window()` plan itself only describes the plan. Use ordinary
+`DBI::dbDisconnect(con)` when finished.
+
+
+Next: [retrieve time windows](time-windows.html).
