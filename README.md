@@ -19,9 +19,9 @@ install.packages("pak")  # Once, if needed
 pak::pak("Songyosr/thipR")
 ```
 
-If thipR is already installed on your THIP account, start with `library(thipR)`.
-See [Start here](https://songyosr.github.io/thipR/articles/start-here.html) for
-THIP user-library installation, prerequisites and one-time database setup.
+In a THIP notebook, create R's personal library once first; see
+[Start here](https://songyosr.github.io/thipR/articles/start-here.html) for the
+THIP installation steps and one-time database setup.
 Installing thipR does not grant THIP database access; credentials come from the
 THIP platform. Never put credentials in notebook cells or source files.
 

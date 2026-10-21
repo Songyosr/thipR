@@ -1,6 +1,6 @@
 # Run manually inside THIP, not during package load or tests.
-# Installs into a separate user library; never changes the shared R library.
-lib <- path.expand("~/R/thipR-library")
+# Installs into your personal library in home; never changes the platform R library.
+lib <- Sys.getenv("R_LIBS_USER")  # R's standard personal library, in home
 dir.create(lib, recursive = TRUE, showWarnings = FALSE)
 .libPaths(c(lib, .libPaths()))
 options(repos = c(CRAN = "https://cloud.r-project.org"), timeout = 300)
