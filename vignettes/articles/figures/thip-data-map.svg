@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 360" role="img" aria-labelledby="t d">
+  <title id="t">Map of THIP's inpatient tables</title>
+  <desc id="d">One table per fiscal year, from nhso2560 onwards. Inside each table, one row per inpatient record, with columns in eight groups: identifiers, person, admission and discharge, payment group, diagnoses, procedures, death and geography.</desc>
+  <style>
+    .h { font: 600 14px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #1f2933; }
+    .t { font: 13px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #1f2933; }
+    .s { font: 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #52606d; }
+    .m { font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #1f2933; }
+    .n { font: 600 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #52606d; }
+  </style>
+  <rect x="0" y="0" width="760" height="360" fill="#ffffff"/>
+
+  <text class="h" x="24" y="32">One table per fiscal year</text>
+  <rect x="44" y="70" width="170" height="44" rx="6" fill="#eef2f6" stroke="#9aa5b1"/>
+  <text class="m" x="58" y="97">nhso2560</text>
+  <text class="s" x="24" y="140">…</text>
+  <rect x="34" y="150" width="170" height="44" rx="6" fill="#eef2f6" stroke="#9aa5b1"/>
+  <text class="m" x="48" y="177">nhso2565</text>
+  <rect x="29" y="202" width="170" height="44" rx="6" fill="#eef2f6" stroke="#9aa5b1"/>
+  <text class="m" x="43" y="229">nhso2566</text>
+  <rect x="24" y="254" width="170" height="44" rx="6" fill="#dbe7f3" stroke="#486581" stroke-width="1.5"/>
+  <text class="m" x="38" y="281">nhso2567</text>
+  <text class="s" x="24" y="322">Named by Buddhist fiscal year,</text>
+  <text class="s" x="24" y="338">October to September:</text>
+  <text class="s" x="24" y="354">2567 = Oct 2023 – Sep 2024</text>
+
+  <path d="M 200 276 C 225 276 225 200 252 200" fill="none" stroke="#486581" stroke-width="1.5"/>
+  <path d="M 246 195 L 254 200 L 246 205" fill="none" stroke="#486581" stroke-width="1.5"/>
+
+  <text class="h" x="262" y="32">Inside a table: one row per inpatient record</text>
+  <g>
+    <rect x="262" y="48" width="478" height="30" rx="6" fill="#e3f0ff"/>
+    <text class="t" x="274" y="68">Identifiers</text><text class="m" x="452" y="68">tran_id, pid</text><text class="n" x="728" y="68" text-anchor="end">2</text>
+    <rect x="262" y="84" width="478" height="30" rx="6" fill="#e6f6ee"/>
+    <text class="t" x="274" y="104">Person</text><text class="m" x="452" y="104">sex, marry_status, age_y, weight</text><text class="n" x="728" y="104" text-anchor="end">4</text>
+    <rect x="262" y="120" width="478" height="30" rx="6" fill="#fdf3e1"/>
+    <text class="t" x="274" y="140">Admission and discharge</text><text class="m" x="452" y="140">dateadm, datedsc, los, dischs …</text><text class="n" x="728" y="140" text-anchor="end">9</text>
+    <rect x="262" y="156" width="478" height="30" rx="6" fill="#f3ecfb"/>
+    <text class="t" x="274" y="176">Payment group</text><text class="m" x="452" y="176">drg_nhso, rw_nhso, adjrw_nhso</text><text class="n" x="728" y="176" text-anchor="end">3</text>
+    <rect x="262" y="192" width="478" height="30" rx="6" fill="#ffe8e5"/>
+    <text class="t" x="274" y="212">Diagnoses</text><text class="m" x="452" y="212">pdx, sdx1 … sdx20, sdx_index</text><text class="n" x="728" y="212" text-anchor="end">22</text>
+    <rect x="262" y="228" width="478" height="30" rx="6" fill="#fff0f6"/>
+    <text class="t" x="274" y="248">Procedures</text><text class="m" x="452" y="248">proc1 … proc21</text><text class="n" x="728" y="248" text-anchor="end">21</text>
+    <rect x="262" y="264" width="478" height="30" rx="6" fill="#eceff1"/>
+    <text class="t" x="274" y="284">Death</text><text class="m" x="452" y="284">death_date, dcause_oth …</text><text class="n" x="728" y="284" text-anchor="end">4</text>
+    <rect x="262" y="300" width="478" height="30" rx="6" fill="#e0f4f5"/>
+    <text class="t" x="274" y="320">Geography</text><text class="m" x="452" y="320">health_region, superdistrict</text><text class="n" x="728" y="320" text-anchor="end">2</text>
+  </g>
+  <text class="s" x="262" y="350">Numbers on the right: columns in each group. All columns are stored as text.</text>
+</svg>
