@@ -54,8 +54,11 @@
        "with match = \"prefix\" in place of \"Q20-Q26\".", call. = FALSE)
 }
 
+# Clean each distinct value once: code columns repeat a few thousand codes many times.
 .normalize_icd_codes <- function(x) {
-  toupper(gsub(".", "", trimws(as.character(x)), fixed = TRUE))
+  x <- as.character(x)
+  u <- unique(x)
+  toupper(gsub(".", "", trimws(u), fixed = TRUE))[match(x, u)]
 }
 
 # Row-value checks belong only to the local path. SQL defers them to execution.

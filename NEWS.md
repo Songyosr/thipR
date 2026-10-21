@@ -1,3 +1,9 @@
+# thipR (development version)
+
+- `icd_flag()` on local data is about four times faster on large inputs: each
+  distinct code is now cleaned once instead of once per cell. Results are
+  unchanged.
+
 # thipR 0.2.1
 
 - Simplify THIP installation: use R's standard personal library
