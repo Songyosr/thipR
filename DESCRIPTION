@@ -14,7 +14,7 @@ Description: A small connection and discovery layer over 'DBI',
 License: GPL-3
 Encoding: UTF-8
 Depends: R (>= 4.1)
-Imports: ClickHouseHTTP (== 1.1.2), DBI, dbplyr (>= 2.0.0), dplyr,
+Imports: ClickHouseHTTP (>= 1.1.2), DBI, dbplyr (>= 2.0.0), dplyr,
     methods, utils, stats, Matrix, data.table
 Suggests: testthat (>= 3.0.0), knitr, rmarkdown, tibble, askpass, getPass, withr
 Config/testthat/edition: 3

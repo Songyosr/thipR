@@ -13,10 +13,12 @@
 #'
 #' The returned object is a genuine `ClickHouseHTTPConnection`, usable with
 #' `DBI::dbGetQuery()` and `dplyr::tbl()`. Connection setup uses the driver's
-#' exported connection class because its 1.1.2 `dbConnect()` method issues
-#' USE and SET statements. This factory sends SELECT only; all query transport,
-#' result decoding and dbplyr translation remain in the upstream driver.
-#' Driver versions other than 1.1.2 require explicit compatibility review.
+#' exported connection class because its `dbConnect()` method issues USE and
+#' SET statements. This factory sends SELECT only; all query transport, result
+#' decoding and dbplyr translation remain in the upstream driver. Tested with
+#' ClickHouseHTTP 1.1.2: older versions are refused, a newer version that changes
+#' the connection structure stops with a clear message, and other newer versions
+#' warn once per session.
 #'
 #' @param host Database hostname; defaults to THIP_DB_HOST.
 #' @param port HTTP port; defaults to THIP_DB_PORT or 8123.
@@ -106,23 +108,46 @@ thip_connect <- function(host = Sys.getenv("THIP_DB_HOST"),
        password = password, https = scheme == "https", settings = settings)
 }
 
-# Keep in sync with the exact Imports pin in DESCRIPTION (tested).
-.supported_clickhouse_version <- "1.1.2"
+# Minimum matches the Imports entry in DESCRIPTION (tested). Releases in the
+# tested minor series are accepted silently; newer ones warn once per session.
+.tested_clickhouse_version <- "1.1.2"
+# Slots thipR sets directly when building the connection object.
+.clickhouse_slots <- c("host", "port", "user", "password", "https", "ssl_verifypeer",
+                       "host_path", "session", "convert_uint", "extended_headers",
+                       "reset_handle", "settings")
+.driver_state <- new.env(parent = emptyenv())
 
 .clickhouse_version <- function() as.character(utils::packageVersion("ClickHouseHTTP"))
 
-.check_clickhouse_version <- function(installed = .clickhouse_version()) {
-  if (!identical(installed, .supported_clickhouse_version))
-    stop("thipR is verified with ClickHouseHTTP ", .supported_clickhouse_version,
-         " only; found ", installed, ". Install the supported version in your user ",
-         "library, e.g. pak::pkg_install(\"ClickHouseHTTP@",
-         .supported_clickhouse_version, "\", lib = lib), then restart R. ",
-         "Other versions need a connection-initialization review first.", call. = FALSE)
+.clickhouse_class_slots <- function()
+  methods::slotNames(methods::getClass("ClickHouseHTTPConnection",
+                                       where = asNamespace("ClickHouseHTTP")))
+
+.check_clickhouse_driver <- function(installed = .clickhouse_version(),
+                                     slots = .clickhouse_class_slots()) {
+  tested <- package_version(.tested_clickhouse_version)
+  found <- package_version(installed)
+  if (found < tested)
+    stop("thipR needs ClickHouseHTTP ", tested, " or later; found ", found,
+         ". Update it with pak::pkg_install(\"ClickHouseHTTP\"), then restart R.",
+         call. = FALSE)
+  missing <- setdiff(.clickhouse_slots, slots)
+  if (length(missing))
+    stop("ClickHouseHTTP ", found, " changed the connection structure thipR ",
+         "relies on (missing: ", paste(missing, collapse = ", "), "). Install the ",
+         "tested version with pak::pkg_install(\"ClickHouseHTTP@", tested,
+         "\"), restart R, and please report this issue.", call. = FALSE)
+  same_minor <- identical(unlist(found)[1:2], unlist(tested)[1:2])
+  if (!same_minor && !isTRUE(.driver_state$warned)) {
+    .driver_state$warned <- TRUE
+    warning("ClickHouseHTTP ", found, " has not been tested with thipR (tested: ",
+            tested, "). Please report any connection problems.", call. = FALSE)
+  }
   invisible(TRUE)
 }
 
 .new_connection <- function(config) {
-  .check_clickhouse_version()
+  .check_clickhouse_driver()
   # Public exported S4 class; do not patch the driver namespace or shared dbplyr state.
   con <- methods::new("ClickHouseHTTPConnection",
     host = config$host, port = config$port, user = config$user,

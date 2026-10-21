@@ -36,16 +36,15 @@ install.packages("pak")  # Once, if needed
 lib <- path.expand("~/R/thipR-library")
 dir.create(lib, recursive = TRUE, showWarnings = FALSE)
 .libPaths(c(lib, .libPaths()))
-pak::pkg_install("ClickHouseHTTP@1.1.2", lib = lib)  # Tested backend, pinned
 pak::pak("Songyosr/thipR", lib = lib)
 library(thipR)
 ```
 
 No source checkout in JupyterLab is required. Installation needs network access,
-package dependencies and, where required, a working compiler. thipR requires
-exactly ClickHouseHTTP 1.1.2 (the tested backend); installing it explicitly first
-keeps the recipe working after CRAN publishes a newer driver. Coordinate missing
-platform prerequisites with the maintainers. For a reproducible study, install a tested commit or release using
+package dependencies and, where required, a working compiler. The database
+driver, ClickHouseHTTP, installs automatically; thipR is tested with version
+1.1.2 and warns once if a newer, untested version is installed. Coordinate
+missing platform prerequisites with the maintainers. For a reproducible study, install a tested commit or release using
 `Songyosr/thipR@<commit-or-tag>` with an actual reviewed reference.
 
 At the start of later sessions using this custom library:
@@ -129,7 +128,8 @@ interfaces. `thip_disconnect()` is also deprecated; use `DBI::dbDisconnect()`.
 No connection argument is needed for `thip_filter_icd()` or `thip_window()` when
 the source already carries it.
 
-The currently tested backend is ClickHouseHTTP **1.1.2**; connection setup rejects
-other versions pending compatibility review. Vignette builds do not certify a
+The tested backend is ClickHouseHTTP **1.1.2**. Older versions are refused; a
+newer version warns once per session, or stops with a clear message if it
+changed the connection structure thipR relies on. Vignette builds do not certify a
 live backend: opt-in read-only smoke scripts in `inst/examples/` cover that path.
 Next: [prepare and filter sources](thip-sources.html).

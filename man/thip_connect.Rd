@@ -54,10 +54,12 @@ returned object's slots or use SQL to override these settings.
 
 The returned object is a genuine `ClickHouseHTTPConnection`, usable with
 `DBI::dbGetQuery()` and `dplyr::tbl()`. Connection setup uses the driver's
-exported connection class because its 1.1.2 `dbConnect()` method issues
-USE and SET statements. This factory sends SELECT only; all query transport,
-result decoding and dbplyr translation remain in the upstream driver.
-Driver versions other than 1.1.2 require explicit compatibility review.
+exported connection class because its `dbConnect()` method issues USE and
+SET statements. This factory sends SELECT only; all query transport, result
+decoding and dbplyr translation remain in the upstream driver. Tested with
+ClickHouseHTTP 1.1.2: older versions are refused, a newer version that changes
+the connection structure stops with a clear message, and other newer versions
+warn once per session.
 }
 \examples{
 \dontrun{

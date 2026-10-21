@@ -8,7 +8,7 @@ analyse them in R. Local condition flags and time-window examples also work
 with synthetic data without a database connection.
 
 **Status:** early public release (0.2.0). Interfaces may still change before
-1.0; the live backend is tested with ClickHouseHTTP 1.1.2 only.
+1.0. The live backend is tested with ClickHouseHTTP 1.1.2.
 
 ## Installation
 
@@ -16,7 +16,6 @@ Install from GitHub:
 
 ```r
 install.packages("pak")  # Once, if needed
-pak::pkg_install("ClickHouseHTTP@1.1.2")  # Tested backend; thipR pins this version
 pak::pak("Songyosr/thipR")
 ```
 

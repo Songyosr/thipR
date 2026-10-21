@@ -19,9 +19,10 @@ visible to anyone. thipR provides read-only R access to THIP notebook databases.
   `eval=FALSE`; opt-in smoke scripts in `inst/examples/` use generated records.
 - Database access is read-only: SELECT and lazy reads only, no table creation
   or mutation.
-- The tested backend is ClickHouseHTTP 1.1.2. Change it together in
-  `DESCRIPTION`, `.supported_clickhouse_version` in `R/connection.R`,
-  `tools/install-thip-dependencies.R` and `.github/workflows/pkgdown.yaml`.
+- The tested backend is ClickHouseHTTP 1.1.2: the minimum in `DESCRIPTION` and
+  `.tested_clickhouse_version` in `R/connection.R` must match. If a new driver
+  changes the connection slots thipR sets, update `.clickhouse_slots` and the
+  connection factory together.
 - The package supplies no clinical definitions; code lists are user-supplied.
 
 ## Before pushing

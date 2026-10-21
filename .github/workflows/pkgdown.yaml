@@ -27,7 +27,7 @@ jobs:
           use-public-rspm: true
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::pkgdown, ClickHouseHTTP@1.1.2, local::.
+          extra-packages: any::pkgdown, local::.
           needs: website
       - name: Build credential-free documentation
         run: |

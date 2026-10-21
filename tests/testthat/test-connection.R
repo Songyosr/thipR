@@ -69,11 +69,20 @@ test_that("NULL limits inherit without sending an unlimited override", {
   expect_null(formals(thip_connect)$max_seconds)
 })
 
-test_that("the DESCRIPTION pin matches the runtime driver check", {
+test_that("the driver check enforces the minimum, structure and untested warning", {
   desc <- read.dcf(system.file("DESCRIPTION", package = "thipR"), fields = "Imports")[[1]]
   pin <- regmatches(desc, regexpr("ClickHouseHTTP \\([^)]*\\)", desc))
-  expect_identical(pin, paste0("ClickHouseHTTP (== ", thipR:::.supported_clickhouse_version, ")"))
-  expect_true(thipR:::.check_clickhouse_version(thipR:::.supported_clickhouse_version))
-  expect_error(thipR:::.check_clickhouse_version("1.2.0"),
-               "found 1.2.0.*ClickHouseHTTP@1.1.2")
+  expect_identical(pin, paste0("ClickHouseHTTP (>= ", thipR:::.tested_clickhouse_version, ")"))
+  slots <- thipR:::.clickhouse_slots
+  expect_true(all(slots %in% thipR:::.clickhouse_class_slots()))
+  expect_true(thipR:::.check_clickhouse_driver("1.1.2", slots))
+  expect_no_warning(thipR:::.check_clickhouse_driver("1.1.9", slots))
+  expect_error(thipR:::.check_clickhouse_driver("1.0.0", slots), "needs ClickHouseHTTP 1.1.2 or later; found 1.0.0")
+  expect_error(thipR:::.check_clickhouse_driver("1.3.0", setdiff(slots, "settings")),
+               "changed the connection structure.*missing: settings.*ClickHouseHTTP@1.1.2")
+  state <- thipR:::.driver_state
+  rm(list = ls(state), envir = state)
+  expect_warning(thipR:::.check_clickhouse_driver("1.2.0", slots), "1.2.0 has not been tested")
+  expect_no_warning(thipR:::.check_clickhouse_driver("1.2.0", slots))  # once per session
+  rm(list = ls(state), envir = state)
 })
