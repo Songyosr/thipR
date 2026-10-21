@@ -29,46 +29,84 @@ thip_setup(
 
 \item{scheme}{Either http or https; defaults to THIP_DB_SCHEME or http.}
 
-\item{overwrite}{Replace existing THIP entries? Defaults to `FALSE`.}
+\item{overwrite}{Replace existing THIP entries? Defaults to \code{FALSE}.}
 
-\item{verify}{Verify the connection before saving? Defaults to `TRUE`.}
+\item{verify}{Verify the connection before saving? Defaults to \code{TRUE}.}
 
-\item{path}{User environment file. Defaults to `R_ENVIRON_USER` when set,
-otherwise `~/.Renviron`. Its parent directory must exist. Keep it outside
+\item{path}{User environment file. Defaults to \code{R_ENVIRON_USER} when set,
+otherwise \verb{~/.Renviron}. Its parent directory must exist. Keep it outside
 project repositories. A custom path needs corresponding R startup setup.}
 }
 \value{
 The saved file path, invisibly; never the credentials or a connection.
 }
 \description{
-Save the six `THIP_DB_*` connection variables in a user-level `.Renviron`
+Save the six \verb{THIP_DB_*} connection variables in a user-level \code{.Renviron}
 file and set them in the current R process. Run this inside your remote THIP
 account, not on the PC used to submit jobs. No Jupyter API token is involved.
 }
 \details{
-Existing THIP entries require `overwrite = TRUE`; unrelated lines are
-preserved. The complete file is replaced atomically with permissions `0600`
+Existing THIP entries require \code{overwrite = TRUE}; unrelated lines are
+preserved. The complete file is replaced atomically with permissions \code{0600}
 on Unix (including Linux and macOS). Symbolic-link targets are refused.
 These are plaintext credentials protected by file permissions, not encryption.
 Processes running as this user and privileged administrators can read them.
 
 Missing host/user values are prompted for interactively. A missing password
-uses IRkernel's masked `getPass` input, or the optional `askpass` package in
+uses IRkernel's masked \code{getPass} input, or the optional \code{askpass} package in
 another interactive R frontend. Unsupported, cancelled or unattended input
 fails without writing. Never type a real password as a notebook-cell literal.
 Arguments also accept values already obtained from a trusted configuration.
 
-Normal R startup loads the saved file. A project `.Renviron`, an explicit
-`R_ENVIRON_USER`, architecture-specific startup files, or `--no-environ` /
-`--vanilla` can change that behavior. Configure the intended startup path
-before launching R, or explicitly use `readRenviron(path)` in an existing
-session. This function does not modify `.Rprofile` or install startup hooks.
+Normal R startup loads the saved file. A project \code{.Renviron}, an explicit
+\code{R_ENVIRON_USER}, architecture-specific startup files, or \code{--no-environ} /
+\code{--vanilla} can change that behavior. Configure the intended startup path
+before launching R, or explicitly use \code{readRenviron(path)} in an existing
+session. This function does not modify \code{.Rprofile} or install startup hooks.
 
-Verification uses the same SELECT-only connection check as [thip_connect()]
+Verification uses the same SELECT-only connection check as \code{\link[=thip_connect]{thip_connect()}}
 and disconnects afterward. Failed verification leaves the file and process
-environment unchanged. `verify = FALSE` saves syntactically valid settings
+environment unchanged. \code{verify = FALSE} saves syntactically valid settings
 without contacting the DB; it does not establish that they work.
 }
+\section{First run in a THIP notebook}{
+
+Run \code{thip_setup()} once, in a notebook cell inside your THIP account. You will
+see, in order:
+\enumerate{
+\item Two text prompts: \verb{Database host:} and then \verb{Database username:}. The
+port (\code{8123}), database (\code{thip}) and scheme (\code{http}) use their defaults and
+are not prompted. Values already set as \verb{THIP_DB_*} variables are not asked for.
+\item A masked \verb{Database password:} box; typed characters show as dots. The
+password is never requested in an unmasked prompt.
+\item A short pause while a read-only \code{SELECT} check connects and then disconnects.
+\item One line: "THIP configuration saved with owner-only permissions and loaded
+in this session."
+}
+
+Six \verb{THIP_DB_*} lines are then saved to \verb{~/.Renviron} with permissions \code{0600}.
+Later sessions need only \code{\link[=thip_connect]{thip_connect()}}. A first run looks like this, with
+placeholders in angle brackets:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{thip_setup()
+#> Database host: <host provided by the THIP team>
+#> Database username: <your database username>
+#> Database password: (masked box)
+#> THIP configuration saved with owner-only permissions and loaded in this session.
+}\if{html}{\out{</div>}}
+}
+
+\section{Troubleshooting}{
+\tabular{ll}{
+   Message or symptom \tab Meaning and what to do \cr
+   "THIP configuration already exists" \tab Setup was done before; it appears before any prompt. Use \code{\link[=thip_connect]{thip_connect()}}, or \code{thip_setup(overwrite = TRUE)} to replace the saved values. \cr
+   "THIP connection verification failed" \tab The host, username or password is wrong, or the database is unreachable. Nothing was saved; run \code{thip_setup()} again. \cr
+   "host must be a hostname without a URL, path or credentials" \tab Enter only the host name, without \verb{http://}, a port or a path. \cr
+   "Input unavailable or cancelled" \tab A prompt was cancelled or could not be shown, for example outside an interactive notebook cell. Nothing was saved; run setup in a notebook cell. \cr
+   No masked password box outside Jupyter \tab In RStudio or a terminal, install the \code{askpass} package for masked entry. \cr
+}
+}
+
 \examples{
 \dontrun{
 # Once, inside THIP; enter credentials through prompts, not cell literals.

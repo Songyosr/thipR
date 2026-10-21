@@ -66,12 +66,40 @@ library(thipR)
 thip_setup()
 ```
 
-Setup prompts for missing configuration, uses masked password entry, verifies
-access by default, and saves configuration to the user's `.Renviron`. This is a
-permission-protected **plaintext** file, not encrypted storage. If the platform
-already supplies the `THIP_DB_*` variables, skip setup. Do not put credentials in
-notebook cells or a repository. A PC's Jupyter token is separate and is not used
-by thipR.
+Run this once, in a notebook cell inside your THIP account. You will see, in order:
+
+1. **Two text prompts**: `Database host:` and then `Database username:`. Enter the
+   values provided by the THIP team. Port `8123`, database `thip` and scheme
+   `http` use their defaults and are not asked for.
+2. **A masked password box**: `Database password:`. Typed characters show as dots.
+3. **A short pause** while a read-only check connects and then disconnects.
+4. **One confirmation line**: "THIP configuration saved with owner-only
+   permissions and loaded in this session."
+
+```
+thip_setup()
+#> Database host: <host provided by the THIP team>
+#> Database username: <your database username>
+#> Database password: (masked box)
+#> THIP configuration saved with owner-only permissions and loaded in this session.
+```
+
+Setup saves six `THIP_DB_*` lines to your `~/.Renviron` with owner-only
+permissions. In later sessions, call `thip_connect()` only. If the check fails,
+nothing is saved and you can simply run `thip_setup()` again.
+
+| Message or symptom | Meaning and what to do |
+|---|---|
+| "THIP configuration already exists" | Setup was done before. Use `thip_connect()`, or `thip_setup(overwrite = TRUE)` to replace the saved values. |
+| "THIP connection verification failed" | The host, username or password is wrong, or the database is unreachable. Nothing was saved; run setup again. |
+| "host must be a hostname without a URL, path or credentials" | Enter only the host name, without `http://`, a port or a path. |
+| "Input unavailable or cancelled" | A prompt was cancelled or could not be shown. Run setup in an interactive notebook cell. |
+| No masked password box outside Jupyter | In RStudio or a terminal, install the `askpass` package. |
+
+The `.Renviron` file is protected by file permissions; it is **plaintext**, not
+encrypted. If the platform already supplies the `THIP_DB_*` variables, skip setup.
+Never type credentials into notebook code or commit them to a repository. A
+Jupyter API token is not used by thipR.
 
 ```{r connect, eval=FALSE}
 library(thipR)

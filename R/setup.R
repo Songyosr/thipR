@@ -27,6 +27,41 @@
 #' environment unchanged. `verify = FALSE` saves syntactically valid settings
 #' without contacting the DB; it does not establish that they work.
 #'
+#' @section First run in a THIP notebook:
+#' Run `thip_setup()` once, in a notebook cell inside your THIP account. You will
+#' see, in order:
+#'
+#' 1. Two text prompts: `Database host:` and then `Database username:`. The
+#'    port (`8123`), database (`thip`) and scheme (`http`) use their defaults and
+#'    are not prompted. Values already set as `THIP_DB_*` variables are not asked for.
+#' 2. A masked `Database password:` box; typed characters show as dots. The
+#'    password is never requested in an unmasked prompt.
+#' 3. A short pause while a read-only `SELECT` check connects and then disconnects.
+#' 4. One line: "THIP configuration saved with owner-only permissions and loaded
+#'    in this session."
+#'
+#' Six `THIP_DB_*` lines are then saved to `~/.Renviron` with permissions `0600`.
+#' Later sessions need only [thip_connect()]. A first run looks like this, with
+#' placeholders in angle brackets:
+#'
+#' ```
+#' thip_setup()
+#' #> Database host: <host provided by the THIP team>
+#' #> Database username: <your database username>
+#' #> Database password: (masked box)
+#' #> THIP configuration saved with owner-only permissions and loaded in this session.
+#' ```
+#'
+#' @section Troubleshooting:
+#' | Message or symptom | Meaning and what to do |
+#' |---|---|
+#' | "THIP configuration already exists" | Setup was done before; it appears before any prompt. Use [thip_connect()], or `thip_setup(overwrite = TRUE)` to replace the saved values. |
+#' | "THIP connection verification failed" | The host, username or password is wrong, or the database is unreachable. Nothing was saved; run `thip_setup()` again. |
+#' | "host must be a hostname without a URL, path or credentials" | Enter only the host name, without `http://`, a port or a path. |
+#' | "Input unavailable or cancelled" | A prompt was cancelled or could not be shown, for example outside an interactive notebook cell. Nothing was saved; run setup in a notebook cell. |
+#' | No masked password box outside Jupyter | In RStudio or a terminal, install the `askpass` package for masked entry. |
+#'
+#' @md
 #' @inheritParams thip_connect
 #' @param overwrite Replace existing THIP entries? Defaults to `FALSE`.
 #' @param verify Verify the connection before saving? Defaults to `TRUE`.
