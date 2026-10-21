@@ -46,6 +46,13 @@ test_that("empty inputs, no matches, duplicate codes and IDs preserve the contra
                            list(flag = "A"), "id", "dx")$id, c(2L, 1L))
 })
 
+test_that("code cleaning gives repeated and missing values the same result", {
+  x <- factor(c(" e11.9 ", NA, " e11.9 ", "J06", "", " j06 ", NA))
+  expect_identical(thipR:::.normalize_icd_codes(x),
+                   c("E119", NA, "E119", "J06", "", "J06", NA))
+  expect_identical(thipR:::.normalize_icd_codes(character()), character())
+})
+
 test_that("malformed inputs are rejected before classification", {
   x <- data.frame(id = "a", dx = "F12")
   run <- function(data = x, conditions = list(flag = "F12"), id = "id", cols = "dx")
