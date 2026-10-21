@@ -5,7 +5,7 @@
 #' [icd_flag()], including its error for unsupported range, wildcard, regex and
 #' list notation. Missing/blank codes do not match. Select source fields before
 #' this function if desired; filters remain part of the lazy query.
-#' @param data A lazy ClickHouseHTTP table.
+#' @param data A lazy table from \code{\link{thip_connect}()} or \code{\link{thip_connect_example}()}.
 #' @param codes Character vector of codes; empty vectors match nothing.
 #' @param cols Character vector of diagnosis columns.
 #' @param match Either "exact" or "prefix".
@@ -13,8 +13,8 @@
 #' @export
 thip_filter_icd <- function(data, codes, cols, match = c("exact", "prefix")) {
   match <- match.arg(match)
-  if (!inherits(data, "tbl_sql") || !inherits(dbplyr::remote_con(data), "ClickHouseHTTPConnection"))
-    stop("data must be a lazy ClickHouseHTTP table; use icd_flag() for local data.", call. = FALSE)
+  if (!inherits(data, "tbl_sql") || is.na(.thip_dialect(dbplyr::remote_con(data))))
+    stop("data must be a lazy table from thip_connect() or thip_connect_example(); use icd_flag() for local data.", call. = FALSE)
   fields <- colnames(data)
   .check_fields(fields, "data")
   if (!.icd_valid_names(cols) || !all(cols %in% fields)) stop("cols must name diagnosis columns.", call. = FALSE)

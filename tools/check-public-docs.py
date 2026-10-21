@@ -14,7 +14,8 @@ from urllib.parse import unquote, urlsplit
 GUIDES = {"start-here", "thip-sources", "time-windows", "condition-flags", "getting-started"}
 REFERENCES = {"collect.thip_window_plan", "icd_flag", "thip_collect", "thip_columns",
               "thip_connect", "thip_disconnect", "thip_filter_icd", "thip_setup",
-              "thip_table", "thip_tables", "thip_window", "thip_date_audit"}
+              "thip_table", "thip_tables", "thip_window", "thip_date_audit",
+              "thip_connect_example"}
 PAGES = {"index", "authors", "404", "articles/index", "reference/index", "news/index",
          "AGENTS"}  # pkgdown renders every root .md; AGENTS.md is public guidance
 PAGES |= {"articles/" + name for name in GUIDES}

@@ -13,7 +13,7 @@
 #' without matches remain in the input roster; see the attached `window_report`
 #' for completion and zero-match counts. An empty clinical row is never invented.
 #'
-#' @param data A lazy ClickHouseHTTP table or local data frame.
+#' @param data A lazy table from \code{\link{thip_connect}()} or \code{\link{thip_connect_example}()}, or a local data frame.
 #' @param cohort Local data frame with one row per unique entry.
 #' @param date Name of the record-date column in data.
 #' @param index Reference-date column in cohort, default "index_date" when window is supplied.

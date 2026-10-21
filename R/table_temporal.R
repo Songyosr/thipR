@@ -62,6 +62,8 @@
   } else if (!is.null(timezone)) stop("timezone supplied without datetimes.", call. = FALSE)
   if (!length(days) && !length(times)) return(data)
   con <- dbplyr::remote_con(data)
+  if (length(times) && identical(.thip_dialect(con), "example"))
+    stop("Datetime conversion is not available in the example database.", call. = FALSE)
   expressions <- c(lapply(days, function(s) .temporal_sql(con, s$column, s$format, FALSE, NULL)),
                    lapply(times, function(s) .temporal_sql(con, s$column, s$format, TRUE, timezone)))
   additions <- paste0(unlist(expressions), " AS ", DBI::dbQuoteIdentifier(con, names(expressions)))

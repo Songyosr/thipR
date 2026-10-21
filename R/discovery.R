@@ -13,7 +13,9 @@ thip_tables <- function(con, include_local = FALSE) {
   if (!is.logical(include_local) || length(include_local) != 1L || is.na(include_local))
     stop("include_local must be TRUE or FALSE.", call. = FALSE)
   db <- DBI::dbQuoteString(con, .database(con))
-  out <- DBI::dbGetQuery(con, paste0(
+  out <- DBI::dbGetQuery(con, if (identical(.thip_dialect(con), "example")) paste0(
+    "SELECT table_name AS name, 'DuckDB' AS engine FROM information_schema.tables ",
+    "WHERE table_schema = ", db, " ORDER BY name") else paste0(
     "SELECT name, engine FROM system.tables WHERE database = ", db, " ORDER BY name"))
   if (!include_local) out <- out[!endsWith(out$name, "_local"), , drop = FALSE]
   out
@@ -26,10 +28,15 @@ thip_tables <- function(con, include_local = FALSE) {
 #' @export
 thip_columns <- function(con, table) {
   table <- .required_string(table, "table")
+  db <- DBI::dbQuoteString(con, .database(con))
+  if (identical(.thip_dialect(con), "example")) return(DBI::dbGetQuery(con, paste0(
+    "SELECT column_name AS name, CASE data_type WHEN 'VARCHAR' THEN 'String' ",
+    "ELSE data_type END AS type, ordinal_position AS position, '' AS comment ",
+    "FROM information_schema.columns WHERE table_schema = ", db,
+    " AND table_name = ", DBI::dbQuoteString(con, table), " ORDER BY position")))
   DBI::dbGetQuery(con, paste0(
     "SELECT name, type, position, comment FROM system.columns WHERE database = ",
-    DBI::dbQuoteString(con, .database(con)), " AND table = ",
-    DBI::dbQuoteString(con, table), " ORDER BY position"))
+    db, " AND table = ", DBI::dbQuoteString(con, table), " ORDER BY position"))
 }
 
 #' Create a lazy dbplyr table

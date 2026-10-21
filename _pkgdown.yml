@@ -25,6 +25,7 @@ reference:
   contents:
   - thip_setup
   - thip_connect
+  - thip_connect_example
   - thip_tables
   - thip_columns
   - thip_table
