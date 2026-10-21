@@ -1,5 +1,15 @@
 # thipR (development version)
 
+- Simplify THIP installation: use R's standard personal library
+  (`R_LIBS_USER`), created once, instead of a custom `~/R/thipR-library` that
+  needed `.libPaths()` in every session.
+
+- Accept ClickHouseHTTP 1.1.2 or later instead of exactly 1.1.2, so a normal
+  `pak::pak("Songyosr/thipR")` keeps working when CRAN updates the driver.
+  Versions older than 1.1.2 are refused; a newer version that changes the
+  connection structure thipR relies on stops with a clear message; other newer
+  versions warn once per session as untested.
+
 - Document what first-time `thip_setup()` looks like in a THIP notebook: the
   prompts in order, the masked password box, the verification step, the
   confirmation line and a troubleshooting table, in the help page and the

@@ -1,6 +1,6 @@
 # Run manually inside THIP, not during package load or tests.
-# Installs into a separate user library; never changes the shared R library.
-lib <- path.expand("~/R/thipR-library")
+# Installs into your personal library in home; never changes the platform R library.
+lib <- Sys.getenv("R_LIBS_USER")  # R's standard personal library, in home
 dir.create(lib, recursive = TRUE, showWarnings = FALSE)
 .libPaths(c(lib, .libPaths()))
 options(repos = c(CRAN = "https://cloud.r-project.org"), timeout = 300)
@@ -15,19 +15,8 @@ if (identical(Sys.getenv("THIP_USE_EXISTING_GXX20"), "true")) {
   Sys.setenv(R_MAKEVARS_USER = makevars)
 }
 Sys.setenv(NOT_CRAN = "true", LIBARROW_BINARY = "true", MAKEFLAGS = "-j2")
-driver <- "1.1.2"  # Must match the exact Imports pin in DESCRIPTION
-install.packages(c("arrow", "DBI", "httr2", "jsonlite", "data.table"), lib = lib, Ncpus = 1)
-# Install exactly the tested driver, from the CRAN archive once CRAN moves on.
-current <- tryCatch(unname(available.packages()["ClickHouseHTTP", "Version"]),
-                    error = function(e) NA_character_)
-if (identical(current, driver)) {
-  install.packages("ClickHouseHTTP", lib = lib, Ncpus = 1)
-} else {
-  install.packages(sprintf("%s/src/contrib/Archive/ClickHouseHTTP/ClickHouseHTTP_%s.tar.gz",
-                           getOption("repos")[["CRAN"]], driver),
-                   repos = NULL, type = "source", lib = lib)
-}
+install.packages(c("arrow", "ClickHouseHTTP"), lib = lib, Ncpus = 1)
 stopifnot(requireNamespace("arrow", quietly = TRUE),
           requireNamespace("ClickHouseHTTP", quietly = TRUE),
-          packageVersion("ClickHouseHTTP") == driver)
+          packageVersion("ClickHouseHTTP") >= "1.1.2")  # Minimum in DESCRIPTION
 cat("Installed in:", lib, "\n")

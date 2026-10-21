@@ -24,36 +24,37 @@ your authorized THIP R session. Column-name arguments use strings such as
 
 ## Install or load thipR
 
-If thipR is already available in your THIP R session, use `library(thipR)` and
-continue to configuration below. For a new installation, install from GitHub
-into your own user library as shown. Installing thipR does not grant THIP
-database access.
+If thipR is already installed, use `library(thipR)` and continue to configuration
+below. On your own computer, install it like any other package:
 
-```{r install, eval=FALSE}
+```{r install-local, eval=FALSE}
 install.packages("pak")  # Once, if needed
+pak::pak("Songyosr/thipR")
+```
 
-# Use your own library, not the shared platform installation.
-lib <- path.expand("~/R/thipR-library")
+**In a THIP notebook**, install into R's standard personal library in your home
+folder, which is kept between sessions. R defines this library but does not
+create the folder, so create it once first:
+
+```{r install-thip, eval=FALSE}
+# Once per THIP account
+lib <- Sys.getenv("R_LIBS_USER")
 dir.create(lib, recursive = TRUE, showWarnings = FALSE)
-.libPaths(c(lib, .libPaths()))
-pak::pkg_install("ClickHouseHTTP@1.1.2", lib = lib)  # Tested backend, pinned
-pak::pak("Songyosr/thipR", lib = lib)
+.libPaths(c(lib, .libPaths()))  # Only needed in this first session
+install.packages("pak")
+pak::pak("Songyosr/thipR")
 library(thipR)
 ```
 
-No source checkout in JupyterLab is required. Installation needs network access,
-package dependencies and, where required, a working compiler. thipR requires
-exactly ClickHouseHTTP 1.1.2 (the tested backend); installing it explicitly first
-keeps the recipe working after CRAN publishes a newer driver. Coordinate missing
-platform prerequisites with the maintainers. For a reproducible study, install a tested commit or release using
-`Songyosr/thipR@<commit-or-tag>` with an actual reviewed reference.
+From then on R finds the folder automatically at start-up, so later sessions
+need only `library(thipR)`. If you installed an earlier version into
+`~/R/thipR-library`, reinstall with the lines above; you can then delete that folder.
 
-At the start of later sessions using this custom library:
-
-```{r load, eval=FALSE}
-.libPaths(c(path.expand("~/R/thipR-library"), .libPaths()))
-library(thipR)
-```
+Installing thipR does not grant THIP database access. Installation needs network
+access and package dependencies. The database driver, ClickHouseHTTP, installs
+automatically; thipR is tested with version 1.1.2 and warns once if a newer,
+untested version is installed. For a reproducible study, install a tested
+release, for example `pak::pak("Songyosr/thipR@v0.2.0")`.
 
 Restart an existing R kernel after upgrading an already-loaded package.
 A source archive (`.tar.gz`) is another installation option; builds that include
@@ -129,7 +130,8 @@ interfaces. `thip_disconnect()` is also deprecated; use `DBI::dbDisconnect()`.
 No connection argument is needed for `thip_filter_icd()` or `thip_window()` when
 the source already carries it.
 
-The currently tested backend is ClickHouseHTTP **1.1.2**; connection setup rejects
-other versions pending compatibility review. Vignette builds do not certify a
+The tested backend is ClickHouseHTTP **1.1.2**. Older versions are refused; a
+newer version warns once per session, or stops with a clear message if it
+changed the connection structure thipR relies on. Vignette builds do not certify a
 live backend: opt-in read-only smoke scripts in `inst/examples/` cover that path.
 Next: [prepare and filter sources](thip-sources.html).
