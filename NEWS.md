@@ -1,5 +1,10 @@
 # thipR (development version)
 
+- New `thip_connect_example()` opens a small synthetic THIP-like database
+  (DuckDB, three invented yearly inpatient tables) so workflows can be practised,
+  taught and tested without THIP access. thipR's functions and ordinary dplyr
+  verbs work on it as on THIP. Needs the optional duckdb package (1.3.0 or later).
+
 - `icd_flag()` on local data is about four times faster on large inputs: each
   distinct code is now cleaned once instead of once per cell. Results are
   unchanged.

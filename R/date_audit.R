@@ -47,14 +47,14 @@ thip_date_audit <- function(data, columns, by = character()) {
       qi <- function(x) if (length(x)) as.character(DBI::dbQuoteIdentifier(con, x)) else character()
       qs <- function(x) as.character(DBI::dbQuoteString(con, x))
       r <- qi(raw); p <- qi(field)
-      missing <- paste0("isNull(", r, ")")
+      missing <- paste0("(", r, " IS NULL)")
       blank <- paste0("ifNull(match(", r, ",", qs("^[[:space:]]*$"), "),0)")
       present <- paste0("NOT (", missing, " OR ", blank, ")")
       expressions <- c("count()", paste0("countIf(", missing, ")"),
         paste0("countIf(", blank, ")"),
-        paste0("countIf(", present, " AND isNotNull(", p, "))"),
-        paste0("countIf(", present, " AND isNull(", p, "))"),
-        paste0("countIf((", missing, " OR ", blank, ") AND isNotNull(", p, "))"))
+        paste0("countIf(", present, " AND ", p, " IS NOT NULL)"),
+        paste0("countIf(", present, " AND ", p, " IS NULL)"),
+        paste0("countIf((", missing, " OR ", blank, ") AND ", p, " IS NOT NULL)"))
       select <- c(qi(by), paste0(qs(field), " AS field"),
         paste0(qs(raw), " AS raw_column"), paste0(expressions, " AS ", count_names))
       sql <- paste0("SELECT ", paste(select, collapse = ", "), " FROM (",

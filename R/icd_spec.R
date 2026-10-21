@@ -4,7 +4,7 @@
     stop("A connection does not identify a table. Use thip_table(con, tables = ...) first.", call. = FALSE)
   remote <- inherits(data, "tbl_sql")
   if (!remote && !is.data.frame(data))
-    stop("data must be a local data frame or a lazy ClickHouseHTTP table.", call. = FALSE)
+    stop("data must be a local data frame or a lazy THIP table.", call. = FALSE)
   remote
 }
 

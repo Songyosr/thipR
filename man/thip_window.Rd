@@ -18,7 +18,7 @@ thip_window(
 )
 }
 \arguments{
-\item{data}{A lazy ClickHouseHTTP table or local data frame.}
+\item{data}{A lazy table from \code{\link{thip_connect}()} or \code{\link{thip_connect_example}()}, or a local data frame.}
 
 \item{cohort}{Local data frame with one row per unique entry.}
 

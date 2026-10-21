@@ -1,7 +1,10 @@
 .icd_flag_sql <- function(data, definitions, id, cols, match, strategy = "row") {
   con <- dbplyr::remote_con(data)
-  if (!inherits(con, "ClickHouseHTTPConnection"))
+  dialect <- .thip_dialect(con)
+  if (is.na(dialect))
     stop("Database icd_flag() currently supports ClickHouseHTTP tables only.", call. = FALSE)
+  if (dialect == "example" && strategy != "row")
+    stop("The example database supports the row strategy only.", call. = FALSE)
   sql <- .icd_sql_context(con)
   normalized <- .icd_sql_source(data, id, cols, sql)
   query <- switch(strategy,

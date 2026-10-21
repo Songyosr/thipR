@@ -23,8 +23,8 @@
 .window_spec <- function(data, cohort, date, index, window, by, entry, start, end, bounds) {
   remote <- inherits(data, "tbl_sql")
   if (!remote && !is.data.frame(data)) stop("data must be a data frame or lazy table.", call. = FALSE)
-  if (remote && !inherits(dbplyr::remote_con(data), "ClickHouseHTTPConnection"))
-    stop("Remote windows currently support ClickHouseHTTP only.", call. = FALSE)
+  if (remote && is.na(.thip_dialect(dbplyr::remote_con(data))))
+    stop("Remote windows need a table from thip_connect() or thip_connect_example().", call. = FALSE)
   if (!is.data.frame(cohort)) stop("cohort must be an explicitly collected local data frame.", call. = FALSE)
   fields <- if (remote) colnames(data) else names(data)
   .check_fields(fields, "data")

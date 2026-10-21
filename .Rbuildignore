@@ -11,3 +11,4 @@
 ^docs$
 ^dev$
 ^AGENTS\.md$
+^data-raw$

@@ -7,7 +7,7 @@
 thip_filter_icd(data, codes, cols, match = c("exact", "prefix"))
 }
 \arguments{
-\item{data}{A lazy ClickHouseHTTP table.}
+\item{data}{A lazy table from \code{\link{thip_connect}()} or \code{\link{thip_connect_example}()}.}
 
 \item{codes}{Character vector of codes; empty vectors match nothing.}
 
