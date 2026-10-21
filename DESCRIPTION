@@ -1,6 +1,6 @@
 Package: thipR
 Title: Read-Only R Access to THIP Notebook Databases
-Version: 0.2.0.9000
+Version: 0.2.1
 Authors@R: person("Songyos", "Rajborirug", email = "songyos.r@psu.ac.th",
     role = c("aut", "cre"))
 Description: A small connection and discovery layer over 'DBI',

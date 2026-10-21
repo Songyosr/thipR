@@ -1,4 +1,4 @@
-# thipR (development version)
+# thipR 0.2.1
 
 - Simplify THIP installation: use R's standard personal library
   (`R_LIBS_USER`), created once, instead of a custom `~/R/thipR-library` that
