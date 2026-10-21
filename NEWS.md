@@ -1,3 +1,10 @@
+# thipR (development version)
+
+- Document what first-time `thip_setup()` looks like in a THIP notebook: the
+  prompts in order, the masked password box, the verification step, the
+  confirmation line and a troubleshooting table, in the help page and the
+  start-here guide.
+
 # thipR 0.2.0
 
 First public release.
