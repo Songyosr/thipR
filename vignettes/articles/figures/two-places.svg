@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 330" role="img" aria-labelledby="t d">
+  <title id="t">Two places: the THIP database server and your R session</title>
+  <desc id="d">On the right, your R session holds dplyr code that counts records of people aged 65 or over by sex. The code goes to the database as a query, written in SQL. It travels through the connection, con. On the left, the database server runs the query over nhso2567, one of its yearly tables, which stay on the server. Only the result, two rows of counts from the example database, comes back to R.</desc>
+  <style>
+    .h { font: 600 14px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #1f2933; }
+    .t { font: 13px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #1f2933; }
+    .s { font: 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #52606d; }
+    .m { font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #1f2933; }
+    .n { font: 600 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #486581; }
+  </style>
+  <rect x="0" y="0" width="760" height="330" fill="#ffffff"/>
+
+  <!-- The database server -->
+  <text class="h" x="24" y="32">THIP's database server</text>
+  <rect x="24" y="48" width="240" height="234" rx="10" fill="#f5f7fa" stroke="#9aa5b1"/>
+  <rect x="44" y="66" width="150" height="34" rx="6" fill="#eef2f6" stroke="#9aa5b1"/>
+  <text class="m" x="58" y="88">nhso2565</text>
+  <rect x="44" y="108" width="150" height="34" rx="6" fill="#eef2f6" stroke="#9aa5b1"/>
+  <text class="m" x="58" y="130">nhso2566</text>
+  <rect x="44" y="150" width="150" height="34" rx="6" fill="#dbe7f3" stroke="#486581" stroke-width="1.5"/>
+  <text class="m" x="58" y="172">nhso2567</text>
+  <text class="s" x="44" y="206">The tables stay here.</text>
+  <rect x="44" y="220" width="200" height="46" rx="6" fill="#fdf3e1"/>
+  <text class="t" x="56" y="240">2. The database runs</text>
+  <text class="t" x="56" y="257">the query on nhso2567</text>
+
+  <!-- Your R session -->
+  <text class="h" x="400" y="32">Your R session</text>
+  <rect x="400" y="48" width="336" height="234" rx="10" fill="#f5f7fa" stroke="#9aa5b1"/>
+  <text class="s" x="416" y="70">1. Your dplyr code is a query</text>
+  <rect x="416" y="80" width="304" height="72" rx="6" fill="#ffffff" stroke="#9aa5b1"/>
+  <text class="m" x="428" y="102">older &lt;- stays |&gt;</text>
+  <text class="m" x="443" y="120">filter(as.integer(age_y) &gt;= 65) |&gt;</text>
+  <text class="m" x="443" y="138">count(sex)</text>
+  <text class="s" x="416" y="180">3. Only the result comes back (example counts)</text>
+  <rect x="416" y="190" width="160" height="76" rx="6" fill="#dbe7f3" stroke="#486581" stroke-width="1.5"/>
+  <text class="m" x="452" y="212">sex</text><text class="m" x="540" y="212" text-anchor="end">n</text>
+  <text class="m" x="452" y="232">1</text><text class="m" x="540" y="232" text-anchor="end">683</text>
+  <text class="m" x="452" y="252">2</text><text class="m" x="540" y="252" text-anchor="end">1010</text>
+
+  <!-- Query goes to the database -->
+  <path d="M 412 116 L 270 116" fill="none" stroke="#486581" stroke-width="1.5"/>
+  <path d="M 278 111 L 270 116 L 278 121" fill="none" stroke="#486581" stroke-width="1.5"/>
+  <text class="n" x="341" y="106" text-anchor="middle">query, as SQL</text>
+
+  <text class="s" x="341" y="172" text-anchor="middle">through con</text>
+
+  <!-- Result comes back to R -->
+  <path d="M 250 228 L 408 228" fill="none" stroke="#486581" stroke-width="1.5"/>
+  <path d="M 400 223 L 408 228 L 400 233" fill="none" stroke="#486581" stroke-width="1.5"/>
+  <text class="n" x="329" y="218" text-anchor="middle">result rows</text>
+
+  <text class="s" x="24" y="314">The database runs the query when you print it or collect() it. The tables never leave the server.</text>
+</svg>

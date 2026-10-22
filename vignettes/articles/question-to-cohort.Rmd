@@ -1,0 +1,480 @@
+---
+title: "From question to cohort"
+description: >
+  Turn a research question into a table of entries, one row per person, by
+  selecting records on the database and choosing entries in R.
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+# Keep the build machine out of printed query headers (load duckdb first, as it
+# registers its own description when it loads).
+loadNamespace("duckdb")
+registerS3method("db_connection_describe", "duckdb_connection",
+                 function(con, ...) "example database", envir = asNamespace("dbplyr"))
+```
+
+A research question is about people: who they are, what happened to them and
+when. THIP holds records. This guide turns one question into rows: it stacks the
+yearly tables, checks their dates, selects the matching records on the database
+and, in R, chooses one entry for each person.
+
+The question, which the next guides carry on, is:
+
+> Among people admitted with appendicitis, how many are readmitted within 30
+> days of discharge, and is that more common in people with diabetes?
+
+Here you build its starting point: the people admitted with appendicitis, one
+row each, with the dates that the next guide measures from.
+
+The map below is the whole guide in one picture. Rules that judge each record
+on its own, such as "is this an appendicitis admission in the study period?",
+run on the database, so only the matching records travel to R. Choosing each
+person's entry compares their records with each other; there are few of them by
+then, so that runs in R, where you can look at every row. What comes into R is
+small: counts, the date-audit summary, a few rows to look at, and the candidate
+records.
+
+```{r cohort-pipeline, echo = FALSE, results = "asis"}
+# Inline, so the diagram travels with the page and keeps its title and description.
+cat("```{=html}", "<div style=\"margin: 0.5rem 0 1.5rem;\">",
+    readLines("figures/cohort-pipeline.svg"), "</div>", "```", sep = "\n")
+```
+
+As in [Meet the THIP data](meet-the-data.html), every example runs on the
+example database of invented records; on THIP, connect with `thip_connect()`
+instead.
+
+```{r connect}
+library(thipR)
+library(dplyr, warn.conflicts = FALSE)
+
+con <- thip_connect_example()
+```
+
+## Words for a cohort
+
+A few words name the pieces of a cohort. This course uses each in one sense:
+
+- **Person:** one `pid`. Your question is about people; the tables hold records.
+- **Source population:** the people your tables can see. THIP's inpatient
+  tables hold hospital stays with claims paid through NHSO ([Meet the THIP
+  data](meet-the-data.html)), so your results describe those people. Here,
+  anyone with such a record in fiscal years 2565 to 2567.
+- **Study period:** the dates on which an admission can bring someone into the
+  study. Here, admissions from 1 October 2021 to 31 August 2024.
+- **Candidate record:** a record that passes the selection rules: admitted in
+  the study period, with a principal diagnosis of appendicitis. One person can
+  have several.
+- **Entry:** the one candidate record chosen to bring a person into the study,
+  here their first. Its `tran_id` becomes the entry's `entry_id`.
+- **Index date:** the date you measure time from. This question needs two: the
+  look-back for history such as diabetes runs up to admission (`adm_date`), and
+  the 30 days of follow-up start at discharge (`dsc_date`).
+
+The cohort is the table of entries, one row per person. This guide calls it
+`entries`.
+
+## Stack the tables, convert the dates
+
+In the example, the study period's admissions sit in three yearly tables, so
+you stack three. As in [Working with a database from R](database-from-r.html),
+`thip_table()` stacks tables of the same kind, with the same columns, into one
+query with SQL's `UNION ALL`. It keeps every row as it is, without removing
+duplicates or merging records, and `.id` adds a column naming the table each
+row came from.
+
+Dates are text, so `thip_table()` can also convert them as it stacks.
+`dates = c(adm = "dateadm")` makes a new column `adm` from the text column
+`dateadm`; `date_format = c(adm = "%Y%m%d")` says how to read it. In a format,
+`%Y` is the four-digit year, `%m` the month and `%d` the day. Nothing is
+guessed: `dateadm` and `datedsc` look like `20231015`, which is `"%Y%m%d"`, and
+`death_date` looks like `2023-10-15`, which is `"%Y-%m-%d"`.
+
+This is the `admissions` query the course builds on; the next guides leave out
+`death`:
+
+```{r admissions}
+admissions <- thip_table(
+  con,
+  tables = c("nhso2565", "nhso2566", "nhso2567"),
+  .id = "source_table",
+  dates = c(adm = "dateadm", dsc = "datedsc", death = "death_date"),
+  date_format = c(adm = "%Y%m%d", dsc = "%Y%m%d", death = "%Y-%m-%d")
+)
+```
+
+Look at three records that have a death date, so that both formats show:
+
+```{r admissions-print}
+admissions |>
+  filter(death_date != "") |>
+  select(source_table, dateadm, adm, datedsc, dsc, death_date, death) |>
+  head(3)
+```
+
+Both raw styles, `20220605` and `2022-06-12`, become the same `<date>` values.
+Each converted column sits beside its raw text, which stays for checking.
+`admissions` is still a query: the conversion runs on the database whenever you
+use it, and printing fetched only these three rows. In the example, a death
+date can fall after the last admission in the tables; on THIP, check the range
+of `death_date` before you use it.
+
+A value that cannot be read as a date becomes `NA`: a blank, text in another
+format, a day that does not exist such as 30 February, or a year outside 1900
+to 2299. If the text holds a time as well, give a format with the time, such as
+`"%Y-%m-%d %H:%M:%S"`: the new date column then keeps the calendar day and drops
+the time. With `"%Y-%m-%d"` alone, such text becomes `NA`. thipR also reads
+`"%Y-%m-%d %H:%M:%OS"`, with seconds of up to three decimals.
+
+You can give a single format for every column, as `date_format = "%Y%m%d"`, but
+only when they all share it: here it would turn every death date into `NA`, and
+the audit below would count them as `n_failed`. For timestamp columns,
+`thip_table()` also has `datetimes` and `datetime_format`. They need a
+`timezone` you have confirmed with the data provider (thipR never guesses one),
+and they run on THIP, not on the example database; see [its reference
+page](../reference/thip_table.html).
+
+Before you rely on the stack, check which admissions each table holds:
+
+```{r table-span}
+admissions |>
+  group_by(source_table) |>
+  summarise(records = n(), first_adm = min(adm, na.rm = TRUE),
+            last_adm = max(adm, na.rm = TRUE)) |>
+  arrange(source_table)
+```
+
+In the example, each table holds the admissions of its fiscal year, and the
+last admission is on 30 September 2024. The last admission date tells you where
+the data end, which sets how late the study period can run (see below). On
+THIP, run the same check on the tables just before and after your study period
+too, and stack any table that also holds admissions from your study period.
+
+## Audit the dates before you filter
+
+A filter on `adm` or `dsc` quietly drops every record whose date failed to
+convert, so look for failures first. `thip_date_audit()` compares each raw
+column with its converted one and counts, for each column, the values that were
+missing (no value at all: `NULL` on the database, `NA` in R), blank (empty
+text, `""`), parsed (read as a date) or failed (text that could not be read as
+a date); the four add up to `n_total`. `n_inconsistent` counts converted dates
+whose raw text was missing or blank, so anything above zero needs checking.
+
+The audit runs summarising queries on the database, so only the counts come
+into R. It reads every value in each column, which takes time on large tables,
+so audit only the tables you will use. Group by something broad, such as the
+source table: grouping by `pid` would bring back one row per person, which is
+slow and brings person-level data into R. Audit the three date columns, table
+by table:
+
+```{r date-audit}
+date_audit <- thip_date_audit(
+  admissions,
+  columns = c(adm = "dateadm", dsc = "datedsc", death = "death_date"),
+  by = "source_table"
+)
+
+date_audit |>
+  arrange(match(field, c("adm", "dsc", "death")), source_table) |>
+  knitr::kable()
+```
+
+Every admission date was read. Discharge dates have two failures in `nhso2566`
+and one blank in `nhso2565`. Most death dates are blank, which here means no
+death date, not a fault. A date that was read is a real calendar date, not
+necessarily a correct one.
+
+## Look at the failures
+
+The audit says how many; to see which, keep the records whose converted
+discharge date is missing and look at the raw text:
+
+```{r failures}
+admissions |>
+  filter(is.na(dsc)) |>
+  select(source_table, pdx, dateadm, datedsc, dsc) |>
+  arrange(source_table, dateadm) |>
+  collect()
+```
+
+Two discharge dates read `20230229`, 29 February 2023, a day that did not
+exist; the other is blank. thipR does not repair them; you decide what they mean
+for your study. Here, follow-up starts at discharge, so a record without a
+discharge date cannot be an entry. None of these three is an appendicitis
+record (look at `pdx`), so in the example the rule will remove nothing. Keep it
+anyway: on THIP it applies wherever a discharge date fails, and it belongs in
+your methods.
+
+## Count as you go
+
+Each selection step drops records. Count records and people after every step:
+the counts are the flow chart your report needs, and a step that drops more
+than you expect deserves a look. This small function counts both, on the
+database or in R, and labels the step. Start with the source population:
+
+```{r count-step}
+count_step <- function(data, step) {
+  data |>
+    summarise(records = n(), people = n_distinct(pid)) |>
+    collect() |>
+    mutate(step = step, .before = records)
+}
+
+funnel <- count_step(admissions, "Source population: all admissions")
+funnel
+```
+
+The three tables hold 9,827 records from 3,000 people. `collect()` does nothing
+to a data frame already in R, so the same function counts a query or a data
+frame.
+
+## Select the candidate records
+
+Two rules pick the candidates, and both are checked record by record on the
+database:
+
+- **Study period:** admitted from 1 October 2021 to 31 August 2024. The
+  example's last admission is on 30 September 2024; stopping a month earlier
+  leaves room for 30 days of follow-up after discharge, which you check once
+  the entries are built. The look-back needs room too: an entry admitted in
+  October 2021 has no earlier table to look back into. [Look back and follow
+  up](look-back-follow-up.html) shows how to check that and what to do about
+  it.
+- **Principal diagnosis:** `pdx` starting with K35, acute appendicitis in
+  ICD-10. The code list is yours; thipR supplies no clinical definitions.
+
+`thip_filter_icd()` adds the diagnosis rule to the query. You choose the columns
+it searches, `cols`, and how codes match: `"exact"` matches whole codes, and
+`"prefix"` matches every code that starts with one of yours, so `K35` finds
+K352, K353, K358 and so on. Before comparing, it ignores case, dots and the
+spaces around each code; blank codes never match. Ranges such as `K35-K37` give
+an error rather than a guess, so list each code. It keeps the matching records
+as they are: it adds no columns and counts no people.
+
+Add both rules to `admissions`; nothing runs yet:
+
+```{r select}
+in_period <- admissions |>
+  filter(adm >= as.Date("2021-10-01"), adm <= as.Date("2024-08-31"))
+
+selected <- in_period |>
+  thip_filter_icd(codes = "K35", cols = "pdx", match = "prefix")
+```
+
+Add the two selection steps to the funnel; these counts still run on the
+database:
+
+```{r funnel-select}
+funnel <- bind_rows(
+  funnel,
+  count_step(in_period, "Admitted in the study period"),
+  count_step(selected, "Principal diagnosis K35")
+)
+funnel
+```
+
+The study period removes 270 records, those admitted in September 2024; the
+diagnosis rule leaves 250 records from 250 people.
+
+## Which codes matched {.tabset}
+
+The two tabs count the selected records by principal diagnosis, one in dplyr and
+one in SQL; use whichever you know.
+
+### dplyr
+
+```{r select-count}
+selected |>
+  count(pdx) |>
+  arrange(pdx)
+```
+
+### SQL
+
+This SQL stacks the tables with `UNION ALL`, cleans each code before comparing
+it, and compares the admission dates as text: `YYYYMMDD` text sorts in date order,
+and the audit showed that every `dateadm` is a valid date.
+
+```{r select-sql}
+DBI::dbGetQuery(con, "
+  SELECT pdx, count(*) AS n
+  FROM (SELECT dateadm, pdx FROM nhso2565
+        UNION ALL SELECT dateadm, pdx FROM nhso2566
+        UNION ALL SELECT dateadm, pdx FROM nhso2567)
+  WHERE dateadm BETWEEN '20211001' AND '20240831'
+    AND upper(replace(trim(pdx), '.', '')) LIKE 'K35%'
+  GROUP BY pdx
+  ORDER BY pdx")
+```
+
+## What the filter caught
+
+The four counts add up to 250 records; notice `k358`, an appendicitis code
+written in lower case. A plain comparison misses it:
+
+```{r plain-filter}
+in_period |>
+  filter(substr(pdx, 1, 3) == "K35") |>
+  summarise(records = n())
+```
+
+That is one record short, because the comparison is case-sensitive.
+`thip_filter_icd()` cleans each code before comparing, so it found all 250.
+To search secondary diagnoses as well, add their columns:
+`cols = c("pdx", paste0("sdx", 1:20))`. This question is about the principal
+diagnosis only.
+
+## Other eligibility rules
+
+A real protocol also has eligibility rules, such as age. `age_y` is age in whole
+years; THIP's dictionary does not say on which date it is measured, so check
+this before you use it as age at admission. To count the selected records of
+people aged 15 or over:
+
+```{r age-rule}
+selected |>
+  filter(as.integer(age_y) >= 15) |>
+  summarise(records = n(), people = n_distinct(pid))
+```
+
+19 of the 250 records are of people under 15. This guide keeps all ages; if
+your protocol needs the rule, add it to `selected`:
+`selected <- selected |> filter(as.integer(age_y) >= 15)`.
+
+Decide whether such a rule applies before or after you choose each person's
+first admission, because the order can change who enters. Take someone admitted
+with appendicitis at 14 and again at 16. Apply the age rule first and the
+admission at 16 becomes their entry; choose the first admission first and the
+rule then drops them.
+
+## Collect the candidates
+
+The selection is small, so bring it into R:
+
+```{r candidates}
+candidates <- collect(selected)
+```
+
+`candidates` is now an ordinary data frame with one row per candidate record.
+Check whether anyone has more than one:
+
+```{r candidates-per-person}
+candidates |>
+  count(pid, name = "records") |>
+  count(records, name = "people")
+```
+
+In the example, every person has one candidate record. Check this on THIP too:
+a person can be admitted with appendicitis more than once, and then the next
+step has to choose.
+
+## Choose one entry per person
+
+Each person enters once, at their first appendicitis admission with a discharge
+date. To choose it, drop candidates without a discharge date, sort each
+person's candidates by admission date and keep the first:
+
+```{r entries}
+entries <- candidates |>
+  filter(!is.na(dsc)) |>
+  arrange(pid, adm, tran_id) |>
+  distinct(pid, .keep_all = TRUE) |>
+  select(pid, entry_id = tran_id, adm_date = adm, dsc_date = dsc)
+
+entries |>
+  head(3)
+```
+
+`distinct()` keeps each person's first row in the sorted order, and
+`.keep_all = TRUE` keeps every column, not only `pid`; `select()` then keeps
+four of them and renames three as it goes, such as `entry_id = tran_id`.
+Sorting by `tran_id` after the admission date breaks ties between two
+admissions on the same day in a fixed way, so the same entries come out every
+time you run it on the same data. `entry_id` keeps the record's `tran_id`, so
+you can go back to the record in the same tables.
+
+Check that there is one row per person, and that 30 days after the last
+discharge is still on or before the last admission date in the tables, because
+a readmission is found by its admission date:
+
+```{r entries-check}
+last_adm <- admissions |>
+  summarise(last = max(adm, na.rm = TRUE)) |>
+  pull(last)
+
+entries |>
+  summarise(entries = n(), people = n_distinct(pid),
+            followup_end = max(dsc_date) + 30, last_adm = last_adm)
+```
+
+There are as many entries as people. The last follow-up ends on 7 September
+2024, before the last admission in the data, on 30 September 2024.
+
+## The funnel
+
+Add the last two steps and look at the whole funnel:
+
+```{r funnel}
+funnel <- bind_rows(
+  funnel,
+  count_step(filter(candidates, !is.na(dsc)), "With a discharge date"),
+  count_step(entries, "Entries: first per person")
+)
+funnel
+```
+
+The first three rows were counted on the database, the last two in R. Each row
+shows how many records and people a rule left; the last row counts entries, one
+per person. In the example, nothing is lost after the diagnosis rule. On THIP,
+these rows are where you would see how many records each rule removed, and they
+are the numbers for your flow chart.
+
+## The whole recipe
+
+Here is everything this guide built, in one chunk; the next guide starts from
+it:
+
+```{r recipe}
+admissions <- thip_table(
+  con, tables = c("nhso2565", "nhso2566", "nhso2567"), .id = "source_table",
+  dates = c(adm = "dateadm", dsc = "datedsc"),
+  date_format = c(adm = "%Y%m%d", dsc = "%Y%m%d")
+)
+
+candidates <- admissions |>
+  filter(adm >= as.Date("2021-10-01"), adm <= as.Date("2024-08-31")) |>
+  thip_filter_icd(codes = "K35", cols = "pdx", match = "prefix") |>
+  collect()
+
+entries <- candidates |>
+  filter(!is.na(dsc)) |>
+  arrange(pid, adm, tran_id) |>
+  distinct(pid, .keep_all = TRUE) |>
+  select(pid, entry_id = tran_id, adm_date = adm, dsc_date = dsc)
+```
+
+## In short
+
+- Name the pieces first: person, source population, study period, candidate
+  record, entry and index date.
+- `thip_table()` stacks yearly tables with the same columns into one query,
+  keeps every row, and with `.id` records each row's table.
+- Convert dates with an explicit format for each column. The raw text stays,
+  `admissions` is still a query that runs on the database, and dates that
+  cannot be read become `NA`.
+- Run `thip_date_audit()` before you filter on a converted date, and decide
+  what a missing date means for your study.
+- Select candidates on the database with `filter()` and `thip_filter_icd()`,
+  which matches whole codes or prefixes after cleaning case, dots and the
+  spaces around each code.
+- Collect the candidates and choose one entry per person in R.
+- Count records and people after every step.
+
+Next: [Look back and follow up](look-back-follow-up.html) fetches the records
+around each entry: `followup`, the admissions in the 30 days after discharge,
+and `history`, the year before admission.
+
+```{r disconnect, include = FALSE}
+DBI::dbDisconnect(con)
+```

@@ -7,16 +7,18 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-Read one guide at a time. The first two describe THIP access; the last three
-run independently with synthetic data and no credentials.
+This page covers installing thipR and connecting to THIP. The guides that follow
+form a short course; they run on an invented example database, so you can follow
+along before you have THIP access.
 
-| Guide | Purpose |
+| Guide | What you will learn |
 |---|---|
-| **1. Start here** | Installation, setup and table discovery (this page) |
-| [2. Prepare and filter sources](thip-sources.html) | Tables, dates and lazy ICD filtering |
-| [3. Retrieve time windows](time-windows.html) | Entry keys, boundaries and batching |
-| [4. Flag conditions locally](condition-flags.html) | Custom lists, matching and aggregation |
-| [5. Worked cohort example](getting-started.html) | Short end-to-end synthetic analysis |
+| [Meet the THIP data](meet-the-data.html) | The yearly tables, what one row is, the main columns |
+| [Working with a database from R](database-from-r.html) | Where your code runs, and when data come into R |
+| [From question to cohort](question-to-cohort.html) | Turn a research question into one entry per person |
+| [Look back and follow up](look-back-follow-up.html) | Fetch each person's history and outcomes around their entry |
+| [Flag conditions locally](condition-flags.html) | Custom code lists, exact or prefix matching |
+| [Worked cohort example](getting-started.html) | A short end-to-end analysis |
 
 The remote snippets below are not executed during package builds. Run them in
 your authorized THIP R session. Column-name arguments use strings such as
@@ -134,4 +136,4 @@ The tested backend is ClickHouseHTTP **1.1.2**. Older versions are refused; a
 newer version warns once per session, or stops with a clear message if it
 changed the connection structure thipR relies on. Vignette builds do not certify a
 live backend: opt-in read-only smoke scripts in `inst/examples/` cover that path.
-Next: [prepare and filter sources](thip-sources.html).
+Next: [Meet the THIP data](meet-the-data.html).

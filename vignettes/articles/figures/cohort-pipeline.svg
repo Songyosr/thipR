@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 400" role="img" aria-labelledby="cp-t cp-d">
+  <title id="cp-t">From yearly tables to one entry per person</title>
+  <desc id="cp-d">Two lanes. On the database: stacking the yearly tables with converted dates leads straight to filtering the study period and the principal diagnosis, which together build one query. Auditing the dates is a side branch off the stack: it runs its own summary, and only that summary comes into R. The collected candidate records also cross into R. In R: read the audit summary, look at the candidates and choose one entry per person, the first with a discharge date, giving the entries table with pid, entry_id, adm_date and dsc_date, ready for look-back and follow-up.</desc>
+  <style>
+    .h { font: 600 14px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #1f2933; }
+    .b { font: 600 13px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #1f2933; }
+    .s { font: 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #52606d; }
+    .m { font: 11.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #1f2933; }
+    .n { font: 600 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #52606d; }
+    .box { fill: #ffffff; stroke: #9aa5b1; }
+    .out { fill: #dbe7f3; stroke: #486581; stroke-width: 1.5; }
+    .arrow { fill: none; stroke: #486581; stroke-width: 1.5; }
+  </style>
+  <rect x="0" y="0" width="760" height="400" fill="#ffffff"/>
+
+  <text class="h" x="24" y="30">From tables to entries</text>
+
+  <!-- Lanes -->
+  <rect x="12" y="46" width="736" height="142" rx="10" fill="#e3f0ff"/>
+  <text class="n" x="26" y="68">On the database</text>
+  <rect x="12" y="222" width="736" height="142" rx="10" fill="#e6f6ee"/>
+  <text class="n" x="26" y="244">In R</text>
+
+  <!-- Database steps -->
+  <rect class="box" x="26" y="82" width="120" height="90" rx="6"/>
+  <text class="b" x="38" y="106">Stack tables,</text>
+  <text class="b" x="38" y="122">convert dates</text>
+  <text class="m" x="38" y="156">thip_table()</text>
+
+  <rect class="box" x="162" y="110" width="140" height="62" rx="6"/>
+  <text class="b" x="174" y="130">Audit dates</text>
+  <text class="s" x="174" y="145">a separate check</text>
+  <text class="m" x="174" y="162">thip_date_audit()</text>
+
+  <rect class="box" x="318" y="82" width="140" height="90" rx="6"/>
+  <text class="b" x="330" y="106">Filter period</text>
+  <text class="b" x="330" y="122">and diagnosis</text>
+  <text class="m" x="330" y="142">filter()</text>
+  <text class="m" x="330" y="158">thip_filter_icd()</text>
+
+  <text class="s" x="476" y="100">Stacking and filtering build</text>
+  <text class="s" x="476" y="116">one query; records stay on the</text>
+  <text class="s" x="476" y="132">database until you collect them.</text>
+  <text class="s" x="476" y="154">The audit runs its own summary.</text>
+
+  <!-- Main line: stack straight to filter, above the audit -->
+  <path class="arrow" d="M 146 96 L 316 96"/>
+  <path class="arrow" d="M 310 91 L 317 96 L 310 101"/>
+  <!-- Side branch: stack to audit -->
+  <path class="arrow" d="M 146 150 L 160 150" stroke-dasharray="4 3"/>
+  <path class="arrow" d="M 155 146 L 161 150 L 155 154"/>
+
+  <!-- Crossing into R -->
+  <path class="arrow" d="M 232 172 L 232 254" stroke-dasharray="4 3"/>
+  <path class="arrow" d="M 227 247 L 232 255 L 237 247"/>
+  <text class="s" x="241" y="210">summary only</text>
+
+  <path class="arrow" d="M 388 172 L 388 253" stroke-width="2.5"/>
+  <path class="arrow" d="M 382 245 L 388 254 L 394 245" stroke-width="2.5"/>
+  <text class="m" x="398" y="210">collect()</text>
+
+  <!-- R steps -->
+  <text class="s" x="26" y="290">Small tables you</text>
+  <text class="s" x="26" y="308">can look at, check</text>
+  <text class="s" x="26" y="326">and change.</text>
+
+  <rect class="box" x="162" y="256" width="140" height="90" rx="6"/>
+  <text class="b" x="174" y="280">Date audit</text>
+  <text class="s" x="174" y="298">one row per table</text>
+  <text class="s" x="174" y="314">and column</text>
+
+  <rect class="box" x="318" y="256" width="140" height="90" rx="6"/>
+  <text class="b" x="330" y="280">Candidates</text>
+  <text class="s" x="330" y="298">one row per record,</text>
+  <text class="s" x="330" y="314">maybe several</text>
+  <text class="s" x="330" y="330">per person</text>
+
+  <rect class="box" x="474" y="256" width="130" height="90" rx="6"/>
+  <text class="b" x="486" y="280">Choose entries</text>
+  <text class="s" x="486" y="298">first with a</text>
+  <text class="s" x="486" y="314">discharge date</text>
+  <text class="m" x="486" y="334">distinct()</text>
+
+  <rect class="out" x="620" y="256" width="114" height="90" rx="6"/>
+  <text class="b" x="632" y="276">entries</text>
+  <text class="m" x="632" y="294">pid</text>
+  <text class="m" x="632" y="309">entry_id</text>
+  <text class="m" x="632" y="324">adm_date</text>
+  <text class="m" x="632" y="339">dsc_date</text>
+
+  <path class="arrow" d="M 458 301 L 472 301"/>
+  <path class="arrow" d="M 466 296 L 473 301 L 466 306"/>
+  <path class="arrow" d="M 604 301 L 618 301"/>
+  <path class="arrow" d="M 612 296 L 619 301 L 612 306"/>
+
+  <text class="s" x="734" y="388" text-anchor="end">One row per person, ready for look-back and follow-up</text>
+</svg>

@@ -11,17 +11,19 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
-GUIDES = {"start-here", "thip-sources", "time-windows", "condition-flags", "getting-started"}
+GUIDES = {"start-here", "condition-flags", "getting-started"}
+# Old guide URLs kept as redirects to their replacements (see _pkgdown.yml).
+REDIRECTS = {"thip-sources", "time-windows"}
 # Website-only articles (vignettes/articles); pkgdown also writes a redirect page
 # for each at articles/articles/<name>.
-WEB_ARTICLES = {"meet-the-data"}
+WEB_ARTICLES = {"meet-the-data", "database-from-r", "question-to-cohort", "look-back-follow-up"}
 REFERENCES = {"collect.thip_window_plan", "icd_flag", "thip_collect", "thip_columns",
               "thip_connect", "thip_disconnect", "thip_filter_icd", "thip_setup",
               "thip_table", "thip_tables", "thip_window", "thip_date_audit",
               "thip_connect_example", "thip_fields"}
 PAGES = {"index", "authors", "404", "articles/index", "reference/index", "news/index",
          "AGENTS"}  # pkgdown renders every root .md; AGENTS.md is public guidance
-PAGES |= {"articles/" + name for name in GUIDES | WEB_ARTICLES}
+PAGES |= {"articles/" + name for name in GUIDES | WEB_ARTICLES | REDIRECTS}
 PAGES |= {"articles/articles/" + name for name in WEB_ARTICLES}
 PAGES |= {"reference/" + name for name in REFERENCES}
 ASSETS = {".css", ".js", ".map", ".svg", ".png", ".ico", ".woff", ".woff2", ".ttf"}
