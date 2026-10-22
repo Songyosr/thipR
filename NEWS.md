@@ -1,4 +1,4 @@
-# thipR (development version)
+# thipR 0.3.0
 
 - New "Learn THIP data" course on the website: eight guides, from meeting the
   data to a worked appendicitis readmission example, data checks and responsible
@@ -23,6 +23,9 @@
 - `icd_flag()` on local data is about four times faster on large inputs: each
   distinct code is now cleaned once instead of once per cell. Results are
   unchanged.
+
+- Printing a `thip_window()` plan uses shorter lines, so it fits a narrow
+  console or a printed page.
 
 # thipR 0.2.1
 

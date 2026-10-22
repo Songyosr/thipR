@@ -59,7 +59,7 @@ Installing thipR does not grant THIP database access. Installation needs network
 access and package dependencies. The database driver, ClickHouseHTTP, installs
 automatically; thipR is tested with version 1.1.2 and warns once if a newer,
 untested version is installed. For a reproducible study, install a tested
-release, for example `pak::pak("Songyosr/thipR@v0.2.1")`.
+release, for example `pak::pak("Songyosr/thipR@v0.3.0")`.
 
 Restart an existing R kernel after upgrading an already-loaded package.
 A source archive (`.tar.gz`) is another installation option; builds that include
