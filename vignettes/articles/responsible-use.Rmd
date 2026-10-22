@@ -7,6 +7,8 @@ description: >
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+# Print results at most 60 characters wide, "#> " included, to fit a printed page.
+options(width = 57)
 # Keep the build machine out of printed query headers (load duckdb first, as it
 # registers its own description when it loads).
 loadNamespace("duckdb")
@@ -98,8 +100,11 @@ the table leaves THIP. The other counts become text too, so write them with
 min_count <- 10  # set this from your protocol
 
 by_status |>
-  mutate(records = if_else(records < min_count, paste0("<", min_count),
-                           format(records, scientific = FALSE, trim = TRUE)))
+  mutate(records = if_else(
+    records < min_count,
+    paste0("<", min_count),
+    format(records, scientific = FALSE, trim = TRUE)
+  ))
 ```
 
 The count for discharge status

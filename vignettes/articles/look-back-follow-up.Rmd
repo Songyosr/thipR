@@ -7,6 +7,8 @@ description: >
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+# Print results at most 60 characters wide, "#> " included, to fit a printed page.
+options(width = 57)
 # Keep the build machine out of printed query headers (load duckdb first, as it
 # registers its own description when it loads).
 loadNamespace("duckdb")
@@ -52,21 +54,26 @@ library(dplyr, warn.conflicts = FALSE)
 con <- thip_connect_example()
 
 admissions <- thip_table(
-  con, tables = c("nhso2565", "nhso2566", "nhso2567"), .id = "source_table",
+  con,
+  tables = c("nhso2565", "nhso2566", "nhso2567"),
+  .id = "source_table",
   dates = c(adm = "dateadm", dsc = "datedsc"),
   date_format = c(adm = "%Y%m%d", dsc = "%Y%m%d")
 )
 
 candidates <- admissions |>
-  filter(adm >= as.Date("2021-10-01"), adm <= as.Date("2024-08-31")) |>
-  thip_filter_icd(codes = "K35", cols = "pdx", match = "prefix") |>
+  filter(adm >= as.Date("2021-10-01"),
+         adm <= as.Date("2024-08-31")) |>
+  thip_filter_icd(codes = "K35", cols = "pdx",
+                  match = "prefix") |>
   collect()
 
 entries <- candidates |>
   filter(!is.na(dsc)) |>
   arrange(pid, adm, tran_id) |>
   distinct(pid, .keep_all = TRUE) |>
-  select(pid, entry_id = tran_id, adm_date = adm, dsc_date = dsc)
+  select(pid, entry_id = tran_id,
+         adm_date = adm, dsc_date = dsc)
 ```
 
 There are `r nrow(entries)` entries, one per person. `adm_date` and `dsc_date`
@@ -136,7 +143,8 @@ column of `entries`:
 ```{r followup-plan}
 followup_plan <- admissions |>
   select(pid, tran_id, source_table, adm, dsc, pdx) |>
-  thip_window(entries, date = "adm", index = "dsc_date", window = c(1L, 31L))
+  thip_window(entries, date = "adm", index = "dsc_date",
+              window = c(1L, 31L))
 
 followup_plan
 ```
@@ -172,7 +180,8 @@ its own readmission:
 
 ```{r followup-days}
 followup |>
-  left_join(select(entries, entry_id, dsc_date), by = "entry_id") |>
+  left_join(select(entries, entry_id, dsc_date),
+            by = "entry_id") |>
   mutate(days_after = as.integer(adm - dsc_date)) |>
   count(days_after)
 
@@ -207,7 +216,10 @@ and join the counts onto it:
 
 ```{r readmit}
 readmit <- entries |>
-  left_join(count(followup, entry_id, name = "readmissions"), by = "entry_id") |>
+  left_join(
+    count(followup, entry_id, name = "readmissions"),
+    by = "entry_id"
+  ) |>
   mutate(readmissions = coalesce(readmissions, 0L),
          readmitted = readmissions > 0)
 
@@ -231,8 +243,10 @@ admission date, and the window ends at it:
 
 ```{r history}
 history <- admissions |>
-  select(pid, tran_id, source_table, adm, dsc, pdx, num_range("sdx", 1:20)) |>
-  thip_window(entries, date = "adm", index = "adm_date", window = c(-365L, 0L)) |>
+  select(pid, tran_id, source_table, adm, dsc, pdx,
+         num_range("sdx", 1:20)) |>
+  thip_window(entries, date = "adm", index = "adm_date",
+              window = c(-365L, 0L)) |>
   collect()
 ```
 
@@ -257,19 +271,22 @@ count the windows that run past them:
 
 ```{r coverage}
 span <- admissions |>
-  summarise(first = min(adm, na.rm = TRUE), last = max(adm, na.rm = TRUE)) |>
+  summarise(first = min(adm, na.rm = TRUE),
+            last = max(adm, na.rm = TRUE)) |>
   collect()
 span
 
 coverage <- entries |>
-  summarise(lookback_starts_early = sum(adm_date - 365L < span$first),
-            followup_ends_late = sum(dsc_date + 30L > span$last))
+  summarise(
+    lookback_early = sum(adm_date - 365L < span$first),
+    followup_late = sum(dsc_date + 30L > span$last)
+  )
 coverage
 ```
 
 No follow-up window runs past the last admission date: the study period stops a
 month before the data end to leave room for follow-up. The look-back has no
-such room at the start: for the `r coverage$lookback_starts_early` entries
+such room at the start: for the `r coverage$lookback_early` entries
 admitted in fiscal year 2565, part of the year before lies before the first
 stacked table, so finding no history there can mean the records are in a table
 you did not stack.
@@ -291,8 +308,10 @@ follow-up written as dates, with `"[]"` so that both days count:
 followup_again <- admissions |>
   select(pid, tran_id, source_table, adm, dsc, pdx) |>
   thip_window(
-    mutate(entries, fu_start = dsc_date + 1L, fu_end = dsc_date + 30L),
-    date = "adm", start = "fu_start", end = "fu_end", bounds = "[]"
+    mutate(entries, fu_start = dsc_date + 1L,
+           fu_end = dsc_date + 30L),
+    date = "adm", start = "fu_start", end = "fu_end",
+    bounds = "[]"
   ) |>
   collect()
 

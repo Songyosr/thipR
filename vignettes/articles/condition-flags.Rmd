@@ -7,6 +7,8 @@ description: >
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+# Print results at most 60 characters wide, "#> " included, to fit a printed page.
+options(width = 57)
 # Keep the build machine out of printed query headers (load duckdb first, as it
 # registers its own description when it loads).
 loadNamespace("duckdb")
@@ -47,25 +49,32 @@ library(dplyr, warn.conflicts = FALSE)
 con <- thip_connect_example()
 
 admissions <- thip_table(
-  con, tables = c("nhso2565", "nhso2566", "nhso2567"), .id = "source_table",
+  con,
+  tables = c("nhso2565", "nhso2566", "nhso2567"),
+  .id = "source_table",
   dates = c(adm = "dateadm", dsc = "datedsc"),
   date_format = c(adm = "%Y%m%d", dsc = "%Y%m%d")
 )
 
 candidates <- admissions |>
-  filter(adm >= as.Date("2021-10-01"), adm <= as.Date("2024-08-31")) |>
-  thip_filter_icd(codes = "K35", cols = "pdx", match = "prefix") |>
+  filter(adm >= as.Date("2021-10-01"),
+         adm <= as.Date("2024-08-31")) |>
+  thip_filter_icd(codes = "K35", cols = "pdx",
+                  match = "prefix") |>
   collect()
 
 entries <- candidates |>
   filter(!is.na(dsc)) |>
   arrange(pid, adm, tran_id) |>
   distinct(pid, .keep_all = TRUE) |>
-  select(pid, entry_id = tran_id, adm_date = adm, dsc_date = dsc)
+  select(pid, entry_id = tran_id,
+         adm_date = adm, dsc_date = dsc)
 
 history <- admissions |>
-  select(pid, tran_id, source_table, adm, dsc, pdx, num_range("sdx", 1:20)) |>
-  thip_window(entries, date = "adm", index = "adm_date", window = c(-365L, 0L)) |>
+  select(pid, tran_id, source_table, adm, dsc, pdx,
+         num_range("sdx", 1:20)) |>
+  thip_window(entries, date = "adm", index = "adm_date",
+              window = c(-365L, 0L)) |>
   collect()
 
 c(entries = nrow(entries), history = nrow(history))
@@ -94,10 +103,10 @@ entry_admissions <- candidates |>
   filter(tran_id %in% entries$entry_id) |>
   rename(entry_id = tran_id)
 
-on_entry <- icd_flag(entry_admissions, dm, id = "entry_id", cols = dx_cols,
-                     match = "prefix")
-in_history <- icd_flag(history, dm, id = "entry_id", cols = dx_cols,
-                       match = "prefix")
+on_entry <- icd_flag(entry_admissions, dm, id = "entry_id",
+                     cols = dx_cols, match = "prefix")
+in_history <- icd_flag(history, dm, id = "entry_id",
+                       cols = dx_cols, match = "prefix")
 
 glimpse(on_entry)
 glimpse(in_history)
@@ -132,7 +141,8 @@ names the two `diabetes` columns by period:
 by_period <- entries |>
   select(entry_id) |>
   left_join(on_entry, by = "entry_id") |>
-  left_join(in_history, by = "entry_id", suffix = c("_entry", "_history"))
+  left_join(in_history, by = "entry_id",
+            suffix = c("_entry", "_history"))
 
 count(by_period, diabetes_entry, diabetes_history)
 ```
@@ -183,8 +193,9 @@ conditions <- list(
   ckd = "N18"
 )
 
-several <- icd_flag(entry_admissions, conditions, id = "entry_id",
-                    cols = dx_cols, match = "prefix")
+several <- icd_flag(entry_admissions, conditions,
+                    id = "entry_id", cols = dx_cols,
+                    match = "prefix")
 summarise(several, across(-entry_id, sum))
 ```
 
@@ -202,9 +213,10 @@ silently misses them. Flag three codes both ways:
 ```{r exact-prefix}
 e11 <- list(e11 = "E11", e116 = "E116", e119 = "E119")
 
-exact <- icd_flag(entry_admissions, e11, id = "entry_id", cols = dx_cols)
-prefix <- icd_flag(entry_admissions, e11, id = "entry_id", cols = dx_cols,
-                   match = "prefix")
+exact <- icd_flag(entry_admissions, e11, id = "entry_id",
+                  cols = dx_cols)
+prefix <- icd_flag(entry_admissions, e11, id = "entry_id",
+                   cols = dx_cols, match = "prefix")
 
 bind_rows(exact = exact, prefix = prefix, .id = "match") |>
   group_by(match) |>
@@ -224,12 +236,12 @@ appendicitis as its principal diagnosis, so `pdx` alone finds no diabetes; the
 secondary diagnoses alone give `NA` to entries with none:
 
 ```{r columns}
-icd_flag(entry_admissions, dm, id = "entry_id", cols = "pdx",
-         match = "prefix") |>
+icd_flag(entry_admissions, dm, id = "entry_id",
+         cols = "pdx", match = "prefix") |>
   count(diabetes)
 
-icd_flag(entry_admissions, dm, id = "entry_id", cols = paste0("sdx", 1:20),
-         match = "prefix") |>
+icd_flag(entry_admissions, dm, id = "entry_id",
+         cols = paste0("sdx", 1:20), match = "prefix") |>
   count(diabetes)
 ```
 
@@ -251,7 +263,8 @@ admissions |>
   arrange(sdx1)
 
 messy <- list(diabetes = c("e11.9", " E11.65 "))
-icd_flag(entry_admissions, messy, id = "entry_id", cols = dx_cols) |>
+icd_flag(entry_admissions, messy, id = "entry_id",
+         cols = dx_cols) |>
   count(diabetes)
 ```
 
@@ -271,7 +284,8 @@ a few codes. Count the entry admissions that each pattern finds:
 ```{r quick-look}
 sdx_text <- entry_admissions$sdx_index
 patterns <- c("E11", "K35", "^E11", "E11.9")
-found <- sapply(patterns, function(p) sum(grepl(p, sdx_text)))
+found <- sapply(patterns,
+                function(p) sum(grepl(p, sdx_text)))
 found
 ```
 
@@ -312,8 +326,9 @@ codes), so thipR keeps them, after removing dots. So `"E11*"` or `"E11.*"` is
 read as the code `E11*`:
 
 ```{r literal}
-star <- icd_flag(entry_admissions, list(e11_star = "E11*", e11 = "E11"),
-                 id = "entry_id", cols = dx_cols, match = "prefix")
+starred <- list(e11_star = "E11*", e11 = "E11")
+star <- icd_flag(entry_admissions, starred, id = "entry_id",
+                 cols = dx_cols, match = "prefix")
 summarise(star, across(-entry_id, sum))
 ```
 
@@ -332,11 +347,13 @@ admissions on `history` and flags them together. Check that both ways agree:
 
 ```{r one-call}
 one_call <- bind_rows(entry_admissions, history) |>
-  icd_flag(dm, id = "entry_id", cols = dx_cols, match = "prefix") |>
+  icd_flag(dm, id = "entry_id", cols = dx_cols,
+           match = "prefix") |>
   mutate(diabetes = coalesce(diabetes, FALSE))
 
 flags |>
-  left_join(one_call, by = "entry_id", suffix = c("", "_one_call")) |>
+  left_join(one_call, by = "entry_id",
+            suffix = c("", "_one_call")) |>
   count(diabetes, diabetes_one_call)
 ```
 

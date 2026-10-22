@@ -45,7 +45,7 @@ create the folder, so create it once first:
 # Once per THIP account
 lib <- Sys.getenv("R_LIBS_USER")
 dir.create(lib, recursive = TRUE, showWarnings = FALSE)
-.libPaths(c(lib, .libPaths()))  # Only needed in this first session
+.libPaths(c(lib, .libPaths()))  # First session only
 install.packages("pak")
 pak::pak("Songyosr/thipR")
 library(thipR)

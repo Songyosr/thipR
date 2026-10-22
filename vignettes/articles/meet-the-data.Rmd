@@ -7,6 +7,8 @@ description: >
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+# Print results at most 60 characters wide, "#> " included, to fit a printed page.
+options(width = 57)
 # Keep the build machine out of printed query headers (load duckdb first, as it
 # registers its own description when it loads).
 loadNamespace("duckdb")
@@ -156,7 +158,8 @@ DBI::dbGetQuery(con, "
 
 DBI::dbGetQuery(con, "
   SELECT records, count(*) AS people
-  FROM (SELECT pid, count(*) AS records FROM nhso2567 GROUP BY pid)
+  FROM (SELECT pid, count(*) AS records
+        FROM nhso2567 GROUP BY pid)
   GROUP BY records
   ORDER BY records")
 ```
@@ -176,7 +179,10 @@ person:
 
 ```{r text-age}
 stays |>
-  summarise(as_text = max(age_y, na.rm = TRUE), as_number = max(as.integer(age_y), na.rm = TRUE))
+  summarise(
+    as_text = max(age_y, na.rm = TRUE),
+    as_number = max(as.integer(age_y), na.rm = TRUE)
+  )
 ```
 
 As text, `"99"` sorts after `"102"`, because `"9"` comes after `"1"`. Three habits
@@ -203,8 +209,9 @@ The package includes `thip_fields`, a reference of the columns written from
 THIP's data dictionary. These are the ones you will use most:
 
 ```{r key-fields}
-key <- c("pid", "tran_id", "sex", "age_y", "dateadm", "datedsc", "dischs",
-         "pdx", "sdx1", "proc1", "death_date", "health_region", "superdistrict")
+key <- c("pid", "tran_id", "sex", "age_y", "dateadm",
+         "datedsc", "dischs", "pdx", "sdx1", "proc1",
+         "death_date", "health_region", "superdistrict")
 
 thip_fields |>
   filter(field %in% key) |>

@@ -7,6 +7,8 @@ description: >
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+# Print results at most 60 characters wide, "#> " included, to fit a printed page.
+options(width = 57)
 # Keep the build machine out of printed query headers (load duckdb first, as it
 # registers its own description when it loads).
 loadNamespace("duckdb")
@@ -60,14 +62,18 @@ con <- thip_connect_example()
 
 # 2. Stack the yearly tables and convert the dates
 admissions <- thip_table(
-  con, tables = c("nhso2565", "nhso2566", "nhso2567"), .id = "source_table",
+  con,
+  tables = c("nhso2565", "nhso2566", "nhso2567"),
+  .id = "source_table",
   dates = c(adm = "dateadm", dsc = "datedsc"),
   date_format = c(adm = "%Y%m%d", dsc = "%Y%m%d")
 )
 
 # 3. Audit the dates
-date_audit <- admissions |>
-  thip_date_audit(columns = c(adm = "dateadm", dsc = "datedsc"))
+date_audit <- thip_date_audit(
+  admissions,
+  columns = c(adm = "dateadm", dsc = "datedsc")
+)
 knitr::kable(date_audit)
 ```
 
@@ -82,18 +88,21 @@ Select the study period's appendicitis admissions on the database, bring them
 into R, and keep each person's first one with a discharge date:
 
 ```{r entries}
-# 4. Select the candidate records on the database, then collect them
+# 4. Select candidates on the database and collect them
 candidates <- admissions |>
-  filter(adm >= as.Date("2021-10-01"), adm <= as.Date("2024-08-31")) |>
-  thip_filter_icd(codes = "K35", cols = "pdx", match = "prefix") |>
+  filter(adm >= as.Date("2021-10-01"),
+         adm <= as.Date("2024-08-31")) |>
+  thip_filter_icd(codes = "K35", cols = "pdx",
+                  match = "prefix") |>
   collect()
 
-# 5. Choose one entry per person in R: the first with a discharge date
+# 5. One entry per person: the first with a discharge date
 entries <- candidates |>
   filter(!is.na(dsc)) |>
   arrange(pid, adm, tran_id) |>
   distinct(pid, .keep_all = TRUE) |>
-  select(pid, entry_id = tran_id, adm_date = adm, dsc_date = dsc)
+  select(pid, entry_id = tran_id,
+         adm_date = adm, dsc_date = dsc)
 
 c(entries = nrow(entries), people = n_distinct(entries$pid))
 ```
@@ -110,11 +119,15 @@ days before admission, and mark the entries that were readmitted:
 # 6. Follow-up: admissions on days 1 to 30 after discharge
 followup <- admissions |>
   select(pid, tran_id, source_table, adm, dsc, pdx) |>
-  thip_window(entries, date = "adm", index = "dsc_date", window = c(1L, 31L)) |>
+  thip_window(entries, date = "adm", index = "dsc_date",
+              window = c(1L, 31L)) |>
   collect()
 
 readmit <- entries |>
-  left_join(count(followup, entry_id, name = "readmissions"), by = "entry_id") |>
+  left_join(
+    count(followup, entry_id, name = "readmissions"),
+    by = "entry_id"
+  ) |>
   mutate(readmissions = coalesce(readmissions, 0L),
          readmitted = readmissions > 0)
 
@@ -122,8 +135,10 @@ count(readmit, readmitted)
 
 # 7. Look-back: admissions in the 365 days before admission
 history <- admissions |>
-  select(pid, tran_id, source_table, adm, dsc, pdx, num_range("sdx", 1:20)) |>
-  thip_window(entries, date = "adm", index = "adm_date", window = c(-365L, 0L)) |>
+  select(pid, tran_id, source_table, adm, dsc, pdx,
+         num_range("sdx", 1:20)) |>
+  thip_window(entries, date = "adm", index = "adm_date",
+              window = c(-365L, 0L)) |>
   collect()
 ```
 
@@ -138,14 +153,18 @@ Flag each entry whose own admission, or an admission in its `history`, has a
 code starting with E10 to E14 in any diagnosis column (`match = "prefix"`):
 
 ```{r flags}
-# 8. Flag diabetes on each entry's own admission and in its history
+# 8. Flag diabetes on the entry admission and its history
 entry_admissions <- candidates |>
   filter(tran_id %in% entries$entry_id) |>
   rename(entry_id = tran_id)
 
 flags <- bind_rows(entry_admissions, history) |>
-  icd_flag(conditions = list(diabetes = paste0("E", 10:14)), id = "entry_id",
-           cols = c("pdx", paste0("sdx", 1:20)), match = "prefix") |>
+  icd_flag(
+    conditions = list(diabetes = paste0("E", 10:14)),
+    id = "entry_id",
+    cols = c("pdx", paste0("sdx", 1:20)),
+    match = "prefix"
+  ) |>
   mutate(diabetes = coalesce(diabetes, FALSE))
 
 count(flags, diabetes)
@@ -197,9 +216,13 @@ Hide them, then write the table to a file; here a temporary one:
 min_count <- 10  # set this from your protocol
 
 shared <- summary_table |>
-  mutate(percent = if_else(readmitted < min_count, NA_real_, percent),
-         readmitted = if_else(readmitted < min_count, paste0("<", min_count),
-                              as.character(readmitted)))
+  mutate(
+    percent = if_else(readmitted < min_count,
+                      NA_real_, percent),
+    readmitted = if_else(readmitted < min_count,
+                         paste0("<", min_count),
+                         as.character(readmitted))
+  )
 
 summary_file <- tempfile(fileext = ".csv")
 write.csv(shared, summary_file, row.names = FALSE)

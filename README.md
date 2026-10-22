@@ -37,29 +37,34 @@ codes for your own study.
 library(thipR)
 library(dplyr)
 
-# Once, if the platform has not supplied your database settings:
+# Once, unless the platform supplies your database settings:
 # thip_setup()
 con <- thip_connect()
 
-# The yearly tables stacked into one query on the database, dates converted.
+# The yearly tables as one query, with dates converted.
 admissions <- thip_table(
-  con, tables = c("nhso2565", "nhso2566", "nhso2567"), .id = "source_table",
+  con,
+  tables = c("nhso2565", "nhso2566", "nhso2567"),
+  .id = "source_table",
   dates = c(adm = "dateadm", dsc = "datedsc"),
   date_format = c(adm = "%Y%m%d", dsc = "%Y%m%d")
 )
 
 # The candidate records come into R at collect().
 candidates <- admissions |>
-  filter(adm >= as.Date("2021-10-01"), adm <= as.Date("2024-08-31")) |>
-  thip_filter_icd(codes = "K35", cols = "pdx", match = "prefix") |>
+  filter(adm >= as.Date("2021-10-01"),
+         adm <= as.Date("2024-08-31")) |>
+  thip_filter_icd(codes = "K35", cols = "pdx",
+                  match = "prefix") |>
   collect()
 
-# One entry per person: their first admission with a discharge date.
+# One entry per person: the first with a discharge date.
 entries <- candidates |>
   filter(!is.na(dsc)) |>
   arrange(pid, adm, tran_id) |>
   distinct(pid, .keep_all = TRUE) |>
-  select(pid, entry_id = tran_id, adm_date = adm, dsc_date = dsc)
+  select(pid, entry_id = tran_id,
+         adm_date = adm, dsc_date = dsc)
 
 DBI::dbDisconnect(con)
 ```

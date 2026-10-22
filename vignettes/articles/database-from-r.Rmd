@@ -7,6 +7,8 @@ description: >
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+# Print results at most 60 characters wide, "#> " included, to fit a printed page.
+options(width = 57)
 # Keep the build machine out of printed query headers (load duckdb first, as it
 # registers its own description when it loads).
 loadNamespace("duckdb")
@@ -96,7 +98,8 @@ by_sex <- stays |>
   mutate(age = as.integer(age_y)) |>
   filter(age >= 65) |>
   group_by(sex) |>
-  summarise(records = n(), mean_age = mean(age, na.rm = TRUE)) |>
+  summarise(records = n(),
+            mean_age = mean(age, na.rm = TRUE)) |>
   arrange(sex)
 
 by_sex
@@ -105,7 +108,7 @@ by_sex
 The record counts match `older`:
 `r format(pull(by_sex, records)[1], big.mark = ",")` men (sex 1) and
 `r format(pull(by_sex, records)[2], big.mark = ",")` women (sex 2), now with
-their mean age. `# Ordered by:` records the `arrange()`.
+their mean age. The `# Ordered by:` line shows the `arrange()`.
 
 `show_query()` shows the one query dbplyr wrote for it:
 
@@ -158,17 +161,19 @@ use [`thip_window()`](../reference/thip_window.html) instead
 Inside `filter()`, `mutate()` and `summarise()`, dbplyr also translates R
 functions into SQL. It knows the common ones: comparisons and arithmetic,
 `as.integer()`, `substr()`, `toupper()`, `is.na()`, `n()`, `n_distinct()`,
-`mean()` and many more. Here `as.integer()` and `substr()` both translate:
+`mean()` and many more. Here `as.integer()`, `substr()` and `toupper()` all
+translate:
 
 ```{r translate}
 stays |>
-  mutate(age = as.integer(age_y), category = substr(pdx, 1, 3)) |>
+  mutate(age = as.integer(age_y),
+         category = toupper(substr(pdx, 1, 3))) |>
   select(pdx, age, category) |>
   show_query()
 ```
 
-`as.integer()` became `TRY_CAST(... AS INTEGER)` and `substr()` became
-`SUBSTR()`.
+`as.integer()` became `TRY_CAST(... AS INTEGER)`, `substr()` became `SUBSTR()`
+and `toupper()` became `UPPER()`.
 
 A function dbplyr does not know is copied into the SQL unchanged, and the
 database looks for a function of that name. Your own R functions are the usual
@@ -270,8 +275,11 @@ two small results; the SQL tab writes the yearly counts by hand, stacking with
 ### dplyr
 
 ```{r stack}
-admissions <- thip_table(con, tables = c("nhso2565", "nhso2566", "nhso2567"),
-                         .id = "source_table")
+admissions <- thip_table(
+  con,
+  tables = c("nhso2565", "nhso2566", "nhso2567"),
+  .id = "source_table"
+)
 
 per_year <- admissions |>
   group_by(source_table) |>
@@ -290,7 +298,8 @@ total
 
 ```{r stack-sql}
 DBI::dbGetQuery(con, "
-  SELECT source_table, count(*) AS records, count(DISTINCT pid) AS people
+  SELECT source_table, count(*) AS records,
+         count(DISTINCT pid) AS people
   FROM (
     SELECT pid, 'nhso2565' AS source_table FROM nhso2565
     UNION ALL

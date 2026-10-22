@@ -7,6 +7,8 @@ description: >
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+# Print results at most 60 characters wide, "#> " included, to fit a printed page.
+options(width = 57)
 # Keep the build machine out of printed query headers (load duckdb first, as it
 # registers its own description when it loads).
 loadNamespace("duckdb")
@@ -126,7 +128,8 @@ Before you rely on the stack, check which admissions each table holds:
 ```{r table-span}
 admissions |>
   group_by(source_table) |>
-  summarise(records = n(), first_adm = min(adm, na.rm = TRUE),
+  summarise(records = n(),
+            first_adm = min(adm, na.rm = TRUE),
             last_adm = max(adm, na.rm = TRUE)) |>
   arrange(source_table)
 ```
@@ -153,7 +156,9 @@ tables you use, and group by something broad, such as `source_table`, not by
 
 ```{r date-audit}
 date_audit <- thip_date_audit(
-  admissions, columns = c(adm = "dateadm", dsc = "datedsc"), by = "source_table"
+  admissions,
+  columns = c(adm = "dateadm", dsc = "datedsc"),
+  by = "source_table"
 )
 
 date_audit |>
@@ -184,7 +189,8 @@ count_step <- function(data, step) {
     mutate(step = step, .before = records)
 }
 
-funnel <- count_step(admissions, "Source population: all admissions")
+funnel <- count_step(admissions,
+                     "Source population: all admissions")
 funnel
 ```
 
@@ -214,10 +220,12 @@ Add both rules to `admissions`; nothing runs yet:
 
 ```{r select}
 in_period <- admissions |>
-  filter(adm >= as.Date("2021-10-01"), adm <= as.Date("2024-08-31"))
+  filter(adm >= as.Date("2021-10-01"),
+         adm <= as.Date("2024-08-31"))
 
 selected <- in_period |>
-  thip_filter_icd(codes = "K35", cols = "pdx", match = "prefix")
+  thip_filter_icd(codes = "K35", cols = "pdx",
+                  match = "prefix")
 ```
 
 Add the two selection steps to the funnel; these counts still run on the
@@ -299,7 +307,8 @@ entries <- candidates |>
   filter(!is.na(dsc)) |>
   arrange(pid, adm, tran_id) |>
   distinct(pid, .keep_all = TRUE) |>
-  select(pid, entry_id = tran_id, adm_date = adm, dsc_date = dsc)
+  select(pid, entry_id = tran_id,
+         adm_date = adm, dsc_date = dsc)
 
 entries |>
   head(3)
@@ -317,7 +326,8 @@ Add the last two steps and look at the whole funnel:
 ```{r funnel}
 funnel <- bind_rows(
   funnel,
-  count_step(filter(candidates, !is.na(dsc)), "With a discharge date"),
+  count_step(filter(candidates, !is.na(dsc)),
+             "With a discharge date"),
   count_step(entries, "Entries: first per person")
 )
 funnel
@@ -335,21 +345,26 @@ it:
 
 ```{r recipe}
 admissions <- thip_table(
-  con, tables = c("nhso2565", "nhso2566", "nhso2567"), .id = "source_table",
+  con,
+  tables = c("nhso2565", "nhso2566", "nhso2567"),
+  .id = "source_table",
   dates = c(adm = "dateadm", dsc = "datedsc"),
   date_format = c(adm = "%Y%m%d", dsc = "%Y%m%d")
 )
 
 candidates <- admissions |>
-  filter(adm >= as.Date("2021-10-01"), adm <= as.Date("2024-08-31")) |>
-  thip_filter_icd(codes = "K35", cols = "pdx", match = "prefix") |>
+  filter(adm >= as.Date("2021-10-01"),
+         adm <= as.Date("2024-08-31")) |>
+  thip_filter_icd(codes = "K35", cols = "pdx",
+                  match = "prefix") |>
   collect()
 
 entries <- candidates |>
   filter(!is.na(dsc)) |>
   arrange(pid, adm, tran_id) |>
   distinct(pid, .keep_all = TRUE) |>
-  select(pid, entry_id = tran_id, adm_date = adm, dsc_date = dsc)
+  select(pid, entry_id = tran_id,
+         adm_date = adm, dsc_date = dsc)
 ```
 
 ## In short

@@ -7,6 +7,8 @@ description: >
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+# Print results at most 60 characters wide, "#> " included, to fit a printed page.
+options(width = 57)
 # Keep the build machine out of printed query headers (load duckdb first, as it
 # registers its own description when it loads).
 loadNamespace("duckdb")
@@ -43,7 +45,9 @@ library(dplyr, warn.conflicts = FALSE)
 con <- thip_connect_example()
 
 admissions <- thip_table(
-  con, tables = c("nhso2565", "nhso2566", "nhso2567"), .id = "source_table",
+  con,
+  tables = c("nhso2565", "nhso2566", "nhso2567"),
+  .id = "source_table",
   dates = c(adm = "dateadm", dsc = "datedsc"),
   date_format = c(adm = "%Y%m%d", dsc = "%Y%m%d")
 )
@@ -59,7 +63,9 @@ each count. Audit both dates, table by table:
 
 ```{r date-audit}
 date_audit <- thip_date_audit(
-  admissions, columns = c(adm = "dateadm", dsc = "datedsc"), by = "source_table"
+  admissions,
+  columns = c(adm = "dateadm", dsc = "datedsc"),
+  by = "source_table"
 )
 
 date_audit |>
@@ -112,13 +118,15 @@ record counts, even one whose date failed to convert:
 
 ```{r monthly}
 monthly <- admissions |>
-  count(source_table, month = substr(dateadm, 1, 6), name = "records") |>
+  count(source_table, month = substr(dateadm, 1, 6),
+        name = "records") |>
   collect()
 
 monthly |>
   group_by(source_table) |>
-  summarise(first = min(month), last = max(month), months = n(),
-            fewest = min(records), most = max(records))
+  summarise(first = min(month), last = max(month),
+            months = n(), fewest = min(records),
+            most = max(records))
 ```
 
 In the example, each table holds the 12 months of its fiscal year, October to
@@ -128,9 +136,11 @@ the months in order, plot one dot per table and month:
 
 ```{r monthly-plot, fig.asp = 0.55, fig.alt = "Records per month of admission in the example, October 2021 to September 2024: one dot a month, in an even band with no gaps, jumps or doubled months."}
 monthly <- monthly |>
-  mutate(first_day = as.Date(paste0(month, "01"), format = "%Y%m%d"))
+  mutate(first_day = as.Date(paste0(month, "01"),
+                             format = "%Y%m%d"))
 
-plot(records ~ first_day, data = monthly, ylim = c(0, max(monthly$records)),
+plot(records ~ first_day, data = monthly,
+     ylim = c(0, max(monthly$records)),
      xlab = "Month of admission", ylab = "Records")
 ```
 
@@ -183,7 +193,8 @@ value means the two agree, and shows how `los` counts days:
 
 ```{r los}
 los_check <- admissions |>
-  mutate(difference = as.integer(los) - as.integer(dsc - adm)) |>
+  mutate(days = as.integer(dsc - adm),
+         difference = as.integer(los) - days) |>
   count(source_table, difference) |>
   collect() |>
   arrange(source_table, difference)
@@ -265,12 +276,15 @@ need to know which one a column holds. Count both in the columns you rely on,
 with the same pattern as `count_codes()`:
 
 ```{r empty}
-key_cols <- c("pid", "tran_id", "sex", "age_y", "dateadm", "datedsc", "los", "pdx")
+key_cols <- c("pid", "tran_id", "sex", "age_y", "dateadm",
+              "datedsc", "los", "pdx")
 
 count_empty <- function(column) {
   admissions |>
-    summarise(missing = sum(is.na(.data[[column]]), na.rm = TRUE),
-              blank = sum(.data[[column]] == "", na.rm = TRUE)) |>
+    summarise(
+      missing = sum(is.na(.data[[column]]), na.rm = TRUE),
+      blank = sum(.data[[column]] == "", na.rm = TRUE)
+    ) |>
     collect() |>
     mutate(column = column, .before = missing)
 }
