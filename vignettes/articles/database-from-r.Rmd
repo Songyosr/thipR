@@ -52,6 +52,10 @@ behind dplyr's database support) writes it as SQL, the language databases
 understand, the database runs it on its
 tables, and only the result travels back to R.
 
+You never load dbplyr yourself. It is installed with thipR, and dplyr calls it
+as soon as you use `tbl()` on a database connection, which is why these guides
+only need `library(thipR)` and `library(dplyr)`.
+
 Build a query that counts the records of people aged 65 or over, by sex:
 
 ```{r older}

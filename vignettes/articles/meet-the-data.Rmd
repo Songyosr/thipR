@@ -59,8 +59,10 @@ another tool, they are storage pieces of the same data, so use the names without
 
 ## Point at a table
 
-`tbl()` points dplyr at one table on the database. We call it `stays` and use
-it for the rest of this guide:
+`tbl()` points dplyr at one table on the database. Behind the scenes, dplyr
+hands the work to its companion package dbplyr; it comes with thipR, so you do
+not load it yourself. We call the table `stays` and use it for the rest of this
+guide:
 
 ```{r stays}
 stays <- tbl(con, "nhso2567")
