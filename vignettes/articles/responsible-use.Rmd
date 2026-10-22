@@ -1,8 +1,8 @@
 ---
 title: "Using THIP data responsibly"
 description: >
-  What THIP's conditions ask of you, and the working habits that follow: what
-  to take out, small counts, credentials and the decisions that are yours.
+  Working habits for THIP data: where records stay, small counts,
+  credentials and the decisions that are yours.
 ---
 
 ```{r setup, include = FALSE}
@@ -18,41 +18,22 @@ registerS3method("db_connection_describe", "duckdb_connection",
 
 THIP's inpatient tables are records of real people's stays in hospital.
 Handling them well protects those people, keeps your access to THIP, and makes
-your results worth trusting. This guide covers what THIP's conditions ask of
-you and the working habits that follow from them: what to take out of THIP,
-small counts, credentials, and the decisions that belong to your protocol.
+your results worth trusting.
 
-## What THIP's conditions say
+thipR is a package, not the data provider. What you may do with THIP's data,
+and what may leave THIP, is set by THIP's own terms, which you accept when you
+register, and by your approved protocol; read the terms in THIP's own words.
+This guide covers working habits that help you keep to them: where records
+stay, small counts, credentials, and the decisions that belong to your
+protocol.
 
-The conditions, in short:
+## Where records stay
 
-- THIP is an information system for study and research: it opens health data,
-  as a data warehouse, to agencies involved in research in Thailand.
-- Ownership of the data stays with the agency that owns them. Data brought in
-  by research projects belong to the agency that funded or carried out the
-  research, and research data belong to the researcher's institution and the
-  researcher.
-- Use the system honestly and ethically, and only within your role.
-- Log in for the first time within two weeks of approval.
-- Do not share your account or your password with anyone.
-- When you want to download data, attach your institution's research-ethics
-  approval in full.
-- THIP may check the details you register with, and may cancel your membership
-  if they are wrong, or your access if you use it outside its purpose or its
-  conditions.
-
-You accept them when you register for a THIP account (the terms shown at
-sign-up); read them there, in THIP's own words. The rest of this guide is about
-keeping to them while you work.
-
-## Keep records inside THIP
-
-Your analysis runs inside THIP's notebook platform, where the records are. Take
-out only what your approved protocol allows. Usually that means aggregate
-tables, such as counts, percentages and model estimates, rather than records or
-identifiers such as `pid` and `tran_id`. Taking out means more than
-downloading: a table copied into a document, a screenshot and a notebook that
-kept its output all leave THIP too.
+Your analysis runs inside THIP's notebook platform, where the records are.
+What may leave it is for THIP's terms and your protocol to decide, not thipR.
+Whatever the rule, taking out means more than downloading: a table copied into
+a document, a screenshot and a notebook that kept its output all leave THIP
+too.
 
 thipR is built for this way of working. Queries run on the database, and only
 what you print or `collect()` comes into your R session, which on THIP runs
@@ -122,7 +103,7 @@ show: inside THIP, keep the full counts for your analysis.
 
 ## Credentials stay out of code
 
-Your THIP account and password are yours alone, as THIP's conditions say. The
+Your THIP account and password are yours alone. The
 database username and password that thipR uses are credentials too, and they
 belong in one place: the settings file that `thip_setup()` writes. Run
 `thip_setup()` once in your THIP account, as [Start
@@ -182,11 +163,10 @@ data, contact the THIP team.
 
 ## In short
 
-- You accept THIP's conditions at sign-up: the data stay their owners', your
-  account is yours alone, downloads need your institution's ethics approval,
-  and THIP may cancel access used outside its conditions.
-- Work inside THIP, and take out only what your protocol allows: usually
-  aggregate tables.
+- THIP's terms and your approved protocol decide what you may do with the
+  data and what may leave THIP; thipR does not.
+- Records you `collect()` stay in your R session on THIP; look at anything
+  before it leaves.
 - Hide counts below your protocol's threshold, and anything that would let
   someone work them out.
 - Keep credentials in the file `thip_setup()` writes, never in code or
