@@ -187,7 +187,7 @@ follow from this:
 
 Dates are text too, in two styles: `dateadm` and `datedsc` look like
 `"20231015"`, while `death_date` looks like `"2023-10-15"`. Convert them before
-you compare or subtract them; [Prepare and filter sources](thip-sources.html)
+you compare or subtract them; [From question to cohort](question-to-cohort.html)
 shows how.
 
 ## The columns, by topic
@@ -285,8 +285,8 @@ populations, see [THIP Commons](https://songyosr.github.io/thip-commons/).
 - Diagnoses are ICD-10 codes without the dot, in `pdx` and `sdx1` to `sdx20`.
 - `thip_fields` describes each column and what its codes mean.
 
-Next: set up THIP access in [Start here](start-here.html), then
-[prepare and filter sources](thip-sources.html).
+Next: [Working with a database from R](database-from-r.html). To run the code on
+THIP, set up access first in [Start here](start-here.html).
 
 ```{r disconnect, include = FALSE}
 DBI::dbDisconnect(con)

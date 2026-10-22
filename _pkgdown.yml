@@ -12,18 +12,22 @@ navbar:
       text: Start here
       href: articles/start-here.html
 articles:
+- title: Set up
+  navbar: Set up
+  contents:
+  - start-here
 - title: Learn THIP data
   navbar: Learn
   contents:
   - articles/meet-the-data
-- title: Learn the workflow
-  navbar: Guides
-  contents:
-  - start-here
-  - thip-sources
-  - time-windows
+  - articles/database-from-r
+  - articles/question-to-cohort
+  - articles/look-back-follow-up
   - condition-flags
   - getting-started
+redirects:
+- ["articles/thip-sources.html", "articles/question-to-cohort.html"]
+- ["articles/time-windows.html", "articles/look-back-follow-up.html"]
 reference:
 - title: Setup and sources
   contents:

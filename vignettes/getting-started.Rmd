@@ -18,7 +18,7 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 
 [Guide index](start-here.html) | Guide 5 of 5
 
-The detailed contracts are in [time windows](time-windows.html) and
+The detailed contracts are in [time windows](look-back-follow-up.html) and
 [condition flags](condition-flags.html). Here we put those operations together.
 
 ## 1. Make a tiny source
@@ -153,7 +153,7 @@ future exposure should not be assigned as a baseline characteristic.
 
 ## Use a remote source
 
-See [prepare and filter sources](thip-sources.html) for `thip_table()` and
+See [from question to cohort](question-to-cohort.html) for `thip_table()` and
 `thip_filter_icd()`. Candidate records enter R at `collect()`; `thip_window()`
 then retrieves each person's records through another explicit `collect()`.
 The same ID must link across source years. Source coverage, eligibility and

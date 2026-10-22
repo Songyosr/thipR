@@ -66,15 +66,20 @@ with IDs and dates; use `date = "adm"` for the converted source date. Its
 `collect()` method retrieves complete person batches. Use `icd_flag()` on local
 records to flag multiple custom condition lists. See the runnable examples below.
 
-## Learn the workflow
+## Learn THIP data
+
+The guides form a short course. They run on an invented example database
+(`thip_connect_example()`), so you can follow along without THIP access.
 
 | Guide | What you will learn |
 |---|---|
-| [Start here](https://songyosr.github.io/thipR/articles/start-here.html) | Install, configure, connect and discover tables |
-| [Prepare and filter sources](https://songyosr.github.io/thipR/articles/thip-sources.html) | Combine tables, convert and audit dates, filter ICD codes |
-| [Retrieve time windows](https://songyosr.github.io/thipR/articles/time-windows.html) | Match people and date windows with explicit boundaries |
+| [Start here](https://songyosr.github.io/thipR/articles/start-here.html) | Install thipR and connect to THIP |
+| [Meet the THIP data](https://songyosr.github.io/thipR/articles/meet-the-data.html) | The yearly tables, what one row is, the main columns |
+| [Working with a database from R](https://songyosr.github.io/thipR/articles/database-from-r.html) | Where your code runs, and when data come into R |
+| [From question to cohort](https://songyosr.github.io/thipR/articles/question-to-cohort.html) | Turn a research question into one entry per person |
+| [Look back and follow up](https://songyosr.github.io/thipR/articles/look-back-follow-up.html) | Fetch each person's history and outcomes around their entry |
 | [Flag conditions locally](https://songyosr.github.io/thipR/articles/condition-flags.html) | Use custom code lists and exact or prefix matching |
-| [Worked cohort example](https://songyosr.github.io/thipR/articles/getting-started.html) | Run a small end-to-end synthetic analysis without credentials |
+| [Worked cohort example](https://songyosr.github.io/thipR/articles/getting-started.html) | Run a small end-to-end analysis |
 
 The [function reference](https://songyosr.github.io/thipR/reference/index.html)
 describes arguments and return values. [News](https://songyosr.github.io/thipR/news/index.html)

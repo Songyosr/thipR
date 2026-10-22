@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 490" role="img" aria-labelledby="t d">
+  <title id="t">Look-back and follow-up windows for three people</title>
+  <desc id="d">Three people on a timeline, each with an entry admission at a different date. Before each admission date (adm_date) is a look-back window of 365 days; after each discharge date (dsc_date) is a follow-up window of days 1 to 30. Records are dots. Person A has one record inside the look-back and one inside the follow-up, both returned, and one later record outside, not returned. Person B has records only before the look-back and after the follow-up, so none is returned. Person C has a record on day 1 after discharge, returned, and one on day 31, not returned, because a window marked [ ) includes its start edge (day 1) but not its end edge (day 31). Widths are not to scale.</desc>
+  <style>
+    .h { font: 600 14px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #1f2933; }
+    .t { font: 13px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #1f2933; }
+    .s { font: 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #52606d; }
+    .b { font: 600 22px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #1f2933; }
+  </style>
+  <rect x="0" y="0" width="760" height="490" fill="#ffffff"/>
+
+  <text class="h" x="24" y="32">Each entry has its own windows</text>
+  <text class="s" x="24" y="52">A record comes back only if its admission date falls inside one of that person's windows.</text>
+
+  <!-- Person A -->
+  <text class="t" x="24" y="155">Person A</text>
+  <line x1="120" y1="150" x2="740" y2="150" stroke="#d9e2ec" stroke-width="1.5"/>
+  <text class="s" x="172" y="126">look-back: 365 days before adm_date</text>
+  <text class="s" x="440" y="126">follow-up: days 1–30 after dsc_date</text>
+  <text class="s" x="386" y="188" text-anchor="end">adm_date</text>
+  <text class="s" x="422" y="188">dsc_date</text>
+  <rect x="170" y="136" width="220" height="28" fill="#e3f0ff"/>
+  <rect x="390" y="136" width="28" height="28" fill="#486581"/>
+  <rect x="426" y="136" width="130" height="28" fill="#fdf3e1"/>
+  <text class="b" x="164" y="158">[</text>
+  <text class="b" x="380" y="158">)</text>
+  <text class="b" x="420" y="158">[</text>
+  <text class="b" x="546" y="158">)</text>
+  <circle cx="268" cy="150" r="5.5" fill="#1f2933"/>
+  <circle cx="486" cy="150" r="5.5" fill="#1f2933"/>
+  <circle cx="650" cy="150" r="5.5" fill="#ffffff" stroke="#7b8794" stroke-width="1.5"/>
+
+  <!-- Person B -->
+  <text class="t" x="24" y="235">Person B</text>
+  <line x1="120" y1="230" x2="740" y2="230" stroke="#d9e2ec" stroke-width="1.5"/>
+  <rect x="280" y="216" width="220" height="28" fill="#e3f0ff"/>
+  <rect x="500" y="216" width="40" height="28" fill="#486581"/>
+  <rect x="548" y="216" width="130" height="28" fill="#fdf3e1"/>
+  <text class="b" x="274" y="238">[</text>
+  <text class="b" x="490" y="238">)</text>
+  <text class="b" x="542" y="238">[</text>
+  <text class="b" x="668" y="238">)</text>
+  <circle cx="214" cy="230" r="5.5" fill="#ffffff" stroke="#7b8794" stroke-width="1.5"/>
+  <circle cx="712" cy="230" r="5.5" fill="#ffffff" stroke="#7b8794" stroke-width="1.5"/>
+
+  <!-- Person C -->
+  <text class="t" x="24" y="315">Person C</text>
+  <line x1="120" y1="310" x2="740" y2="310" stroke="#d9e2ec" stroke-width="1.5"/>
+  <rect x="130" y="296" width="220" height="28" fill="#e3f0ff"/>
+  <rect x="350" y="296" width="22" height="28" fill="#486581"/>
+  <rect x="380" y="296" width="130" height="28" fill="#fdf3e1"/>
+  <text class="b" x="124" y="318">[</text>
+  <text class="b" x="340" y="318">)</text>
+  <text class="b" x="374" y="318">[</text>
+  <text class="b" x="500" y="318">)</text>
+  <circle cx="398" cy="310" r="5.5" fill="#1f2933"/>
+  <circle cx="518" cy="310" r="5.5" fill="#ffffff" stroke="#7b8794" stroke-width="1.5"/>
+  <text class="s" x="398" y="342" text-anchor="middle">day 1</text>
+  <text class="s" x="518" y="342" text-anchor="middle">day 31</text>
+  <text class="t" x="498" y="370">Day 31 is not returned:</text>
+  <text class="s" x="498" y="387">[ ) includes the start edge (day 1),</text>
+  <text class="s" x="498" y="403">not the end edge (day 31).</text>
+
+  <!-- Time axis -->
+  <line x1="120" y1="420" x2="704" y2="420" stroke="#9aa5b1" stroke-width="1.5"/>
+  <path d="M 698 415 L 706 420 L 698 425" fill="none" stroke="#9aa5b1" stroke-width="1.5"/>
+  <text class="s" x="712" y="424">time</text>
+
+  <!-- Legend -->
+  <circle cx="30" cy="450" r="5.5" fill="#1f2933"/>
+  <text class="s" x="42" y="454">inside a window: returned</text>
+  <circle cx="226" cy="450" r="5.5" fill="#ffffff" stroke="#7b8794" stroke-width="1.5"/>
+  <text class="s" x="238" y="454">outside every window: not returned</text>
+  <text class="s" x="24" y="476">Widths are not to scale: the look-back is 365 days and the follow-up 30 days.</text>
+</svg>

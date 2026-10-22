@@ -1,0 +1,442 @@
+---
+title: "Working with a database from R"
+description: >
+  Where your dplyr code runs when you work with THIP, what comes back to R, and
+  how to count people across yearly tables.
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+# Keep the build machine out of printed query headers (load duckdb first, as it
+# registers its own description when it loads).
+loadNamespace("duckdb")
+registerS3method("db_connection_describe", "duckdb_connection",
+                 function(con, ...) "example database", envir = asNamespace("dbplyr"))
+```
+
+In the first guide you saw that `tbl()` gives a query, not a copy of the
+table. This guide fills in the picture behind that: where your
+code runs, which dplyr verbs and R functions work on the database, when to bring
+a result into R, and how to count people when your question spans several
+yearly tables.
+
+As in [Meet the THIP data](meet-the-data.html), every example runs on the
+example database of invented records. On THIP, connect with `thip_connect()`
+instead and the same code runs there, apart from the differences in
+[The example is DuckDB, THIP is ClickHouse](#the-example-is-duckdb-thip-is-clickhouse).
+Load the packages, connect and point `stays` at the fiscal year 2567 table, as
+before:
+
+```{r connect}
+library(thipR)
+library(dplyr, warn.conflicts = FALSE)
+
+con <- thip_connect_example()
+stays <- tbl(con, "nhso2567")
+```
+
+## Two places
+
+When you work with THIP there are two places. The THIP database server holds the
+tables and does the heavy work. Your R session is where you write code and where
+results arrive. The connection, `con`, links the two.
+
+```{r two-places, echo = FALSE, results = "asis"}
+# Inline, so the diagram travels with the page and keeps its title and description.
+cat("```{=html}", "<div style=\"margin: 0.5rem 0 1.5rem;\">",
+    readLines("figures/two-places.svg"), "</div>", "```", sep = "\n")
+```
+
+Your dplyr code is a query that waits in R. When it runs, dbplyr (the package
+behind dplyr's database support) writes it as SQL, the language databases
+understand, the database runs it on its
+tables, and only the result travels back to R.
+
+Build a query that counts the records of people aged 65 or over, by sex:
+
+```{r older}
+older <- stays |>
+  filter(as.integer(age_y) >= 65) |>
+  count(sex)
+```
+
+Nothing has run yet: `older` only describes what you want. Print it, and the
+database runs it:
+
+```{r older-print}
+older
+```
+
+The database looked through the whole table, but only two rows came back to R.
+
+The database does work at three moments:
+
+- When you point at a table with `tbl()` or `thip_table()`, R may ask the
+  database for the table's column names.
+- When you print a query, the database runs it and sends back the first 10
+  rows.
+- When you `collect()` a query, the database runs it and sends back every row
+  of the result.
+
+Adding verbs to a query, as above, builds it in R and sends nothing.
+
+## Verbs that run on the database
+
+These dplyr verbs all become SQL and run on the database: `filter()`,
+`select()`, `mutate()`, `summarise()` with `group_by()`, `count()`,
+`arrange()`, `distinct()`, and joins between tables on the same connection.
+Chain as many as you need; dbplyr writes the whole pipeline as one query.
+
+This pipeline uses most of them. It converts age to a number, keeps people aged
+65 or over and summarises their records by sex:
+
+```{r by-sex}
+by_sex <- stays |>
+  select(sex, age_y) |>
+  mutate(age = as.integer(age_y)) |>
+  filter(age >= 65) |>
+  group_by(sex) |>
+  summarise(records = n(), mean_age = mean(age, na.rm = TRUE)) |>
+  arrange(sex)
+
+by_sex
+```
+
+The record counts match `older`: 683 men (sex 1) and 1,010 women (sex 2), now
+with their mean age. `# Ordered by:` records the `arrange()`.
+
+`show_query()` shows the one query dbplyr wrote for it:
+
+```{r by-sex-sql}
+show_query(by_sex)
+```
+
+Read it from the inside out. The inner `SELECT`, in brackets after `FROM`,
+keeps `sex` and `age_y` (`select()`) and computes `age` (`mutate()`). `WHERE`
+keeps people aged 65 or over (`filter()`), `GROUP BY` with `COUNT(*)` and
+`AVG()` comes from `group_by()` and `summarise()`, and `ORDER BY` from
+`arrange()`. `q01` is only a name dbplyr gives the inner query, and `65.0` is
+how it writes R's number 65. SQL's `AVG()` always skips missing values, so
+`na.rm = TRUE` needs no SQL.
+
+## Join tables on the same connection
+
+Joins run on the database too, as long as both tables come from the same
+connection. This one finds the people with records in both fiscal years 2566
+and 2567: `distinct()` gives one row per person in each table, and
+`inner_join()` keeps the people found in both.
+
+```{r join}
+people_2566 <- tbl(con, "nhso2566") |> distinct(pid)
+people_2567 <- tbl(con, "nhso2567") |> distinct(pid)
+
+in_both <- people_2566 |>
+  inner_join(people_2567, by = "pid")
+
+count(in_both)
+```
+
+The two tables never left the database; one number came back. The SQL has a
+`SELECT DISTINCT` for each table and an `INNER JOIN` between them:
+
+```{r join-sql}
+show_query(in_both)
+```
+
+`LHS` and `RHS` are dbplyr's names for the left and right tables.
+
+Joining a database table to a data frame in R is different: dplyr stops with an
+error saying the two must share the same source, and suggests a `copy`
+argument. Leave it aside. `copy = "temp-table"` would write a table to the
+database, which thipR never does, and `copy = "inline"` pastes the whole data
+frame into the SQL. To fetch the records of people you hold in a data frame, use
+[`thip_window()`](../reference/thip_window.html), covered in
+[Look back and follow up](look-back-follow-up.html): it sends the people to the
+database in batches and brings back only their records.
+
+## R functions inside verbs
+
+Inside `filter()`, `mutate()` and `summarise()`, dbplyr also translates R
+functions into SQL. It knows the common ones: comparisons and arithmetic,
+`as.integer()`, `substr()`, `toupper()`, `is.na()`, `n()`, `n_distinct()`,
+`mean()` and many more. Here `as.integer()` and `substr()` both translate:
+
+```{r translate}
+stays |>
+  mutate(age = as.integer(age_y), category = substr(pdx, 1, 3)) |>
+  select(pdx, age, category) |>
+  show_query()
+```
+
+`as.integer()` became `TRY_CAST(... AS INTEGER)` and `substr()` became
+`SUBSTR()`.
+
+A function dbplyr does not know is copied into the SQL unchanged, and the
+database looks for a function of that name. Your own R functions are the usual
+case, because dbplyr cannot see inside them:
+
+```{r own-function}
+first_letter <- function(code) substr(code, 1, 1)
+
+stays |>
+  mutate(letter = first_letter(pdx)) |>
+  select(pdx, letter) |>
+  show_query()
+```
+
+`first_letter(pdx)` went into the SQL as written. The database has no function
+called `first_letter`, so running this query stops with an error saying no
+function of that name exists. Write the expression out instead:
+`mutate(letter = substr(pdx, 1, 1))`.
+
+So there are two ways to tell whether a function works on the database. Read
+`show_query()`: a function dbplyr translated usually appears in capitals or
+under a new name (`SUBSTR`, `TRY_CAST`), while one it did not know appears
+exactly as you typed it. Or run the query and read the error. The error comes
+from the database, as for `first_letter()`, or from dbplyr itself. `ymd()` shows
+both: written `lubridate::ymd()`, dbplyr stops with "No known SQL translation";
+written `ymd()` after `library(lubridate)`, it reaches the database, which says
+the function does not exist. For dates, use `thip_table()`, which converts
+THIP's date text for you; the next guide shows how.
+
+## The example is DuckDB, THIP is ClickHouse
+
+The SQL in this guide is DuckDB's, the database engine behind the example. THIP
+runs ClickHouse, so `show_query()` prints different SQL there, and a few
+functions behave differently. `as.integer()` is one: here it becomes `TRY_CAST`,
+which gives `NA` for text that is not a number; on THIP it becomes ClickHouse's
+`toInt64()`, which stops with an error instead.
+
+So on THIP, a query that converts a column stops when it meets text that is not
+a number, an empty value included. If that happens, look at the values first,
+for example with `stays |> count(age_y, sort = TRUE)`, and decide how to handle
+them. To turn them into `NA`, write ClickHouse's own `toInt64OrNull()` in place
+of `as.integer()`. dbplyr does not know this function, so it passes it to
+ClickHouse unchanged, as it did with `first_letter()`. It runs only on THIP, not
+on the example:
+
+```{r to-int-or-null, eval = FALSE}
+stays |>
+  filter(toInt64OrNull(age_y) >= 65) |>
+  count(sex)
+```
+
+Stick to ordinary dplyr verbs and the functions in dbplyr's
+[translation list](https://dbplyr.tidyverse.org/articles/translation-function.html).
+When you first run a query on THIP, run it on a small result before you build
+on it: running it, not reading `show_query()`, is what catches a difference
+like this one.
+
+## Bring results into R with collect()
+
+Printing shows at most the first 10 rows; `collect()` brings the whole result
+into R as an ordinary data frame (a tibble). From then on it is local data:
+every R function works on it, including your own, and plots and models take it
+like any other data frame. Collect the summary of older people from above:
+
+```{r collect}
+older_by_sex <- collect(by_sex)
+older_by_sex
+```
+
+The header now says `A tibble: 2 × 3` rather than `A query`: the rows are in R,
+and R knows how many there are.
+
+**Collect only small results.** `collect(tbl(con, "nhso2567"))` would bring
+every row and column of the table into R's memory. Filter, select and summarise
+on the database first. When you are not sure how big a result is, count its rows
+there before you collect it:
+
+```{r count-first}
+stays |>
+  filter(as.integer(age_y) >= 65) |>
+  count()
+```
+
+That is how many rows `collect()` would bring for the records themselves rather
+than their summary: one number came back, not the rows. On THIP, a result
+larger than the connection's row or time limit stops with an error rather than
+arriving cut short (see [`thip_connect()`](../reference/thip_connect.html));
+filter or summarise further and run it again.
+
+`DBI::dbGetQuery()`, used in the SQL tabs, works like `collect()`: it runs the
+SQL at once and brings back every row. Add `LIMIT` when you only want to look.
+
+## Count people across yearly tables {.tabset}
+
+A question that spans several fiscal years needs several tables.
+[`thip_table()`](../reference/thip_table.html) stacks them into one query, one
+table under the next, and `.id` adds a column naming the table each record came
+from. The next guide uses it fully; here it only stacks three years. Count
+records and people in each year, then in all three together; the SQL tab writes
+the stacking by hand, with `UNION ALL`.
+
+### dplyr
+
+```{r stack}
+admissions <- thip_table(con, tables = c("nhso2565", "nhso2566", "nhso2567"),
+                         .id = "source_table")
+
+admissions |>
+  group_by(source_table) |>
+  summarise(records = n(), people = n_distinct(pid)) |>
+  arrange(source_table)
+
+admissions |>
+  summarise(records = n(), people = n_distinct(pid))
+```
+
+### SQL
+
+```{r stack-sql}
+DBI::dbGetQuery(con, "
+  SELECT source_table, count(*) AS records, count(DISTINCT pid) AS people
+  FROM (
+    SELECT pid, 'nhso2565' AS source_table FROM nhso2565
+    UNION ALL
+    SELECT pid, 'nhso2566' AS source_table FROM nhso2566
+    UNION ALL
+    SELECT pid, 'nhso2567' AS source_table FROM nhso2567
+  )
+  GROUP BY source_table
+  ORDER BY source_table")
+
+DBI::dbGetQuery(con, "
+  SELECT count(*) AS records, count(DISTINCT pid) AS people
+  FROM (
+    SELECT pid FROM nhso2565
+    UNION ALL
+    SELECT pid FROM nhso2566
+    UNION ALL
+    SELECT pid FROM nhso2567
+  )")
+```
+
+## Records add up, people do not
+
+```{r sums, include = FALSE}
+per_year <- admissions |>
+  group_by(source_table) |>
+  summarise(records = n(), people = n_distinct(pid)) |>
+  collect()
+total <- admissions |>
+  summarise(records = n(), people = n_distinct(pid)) |>
+  collect()
+years <- admissions |>
+  distinct(pid, source_table) |>
+  count(pid, name = "years") |>
+  count(years, name = "people") |>
+  collect()
+in_years <- function(k) years$people[years$years == k]
+big <- function(x) format(x, big.mark = ",")
+```
+
+The yearly records add up to the total: `r big(sum(per_year$records))`. The
+yearly people do not: they add up to `r big(sum(per_year$people))`, but there
+are only `r big(total$people)` people, because many people have records in more
+than one year. Count how many years each person appears in. `distinct()` keeps
+one row per person per year, so `count(pid)` then counts years, not records:
+
+```{r years}
+admissions |>
+  distinct(pid, source_table) |>
+  count(pid, name = "years") |>
+  count(years, name = "people") |>
+  arrange(years)
+```
+
+The `r big(in_years(3))` people seen in all three years are counted three times
+in the yearly sums, and the `r big(in_years(2))` seen in two years twice:
+`r big(in_years(1))` + 2 × `r big(in_years(2))` + 3 × `r big(in_years(3))` =
+`r big(in_years(1) + 2 * in_years(2) + 3 * in_years(3))`. Count people once,
+with `n_distinct(pid)` on the stacked table, and never by adding up yearly
+counts.
+
+## Stacking keeps every row
+
+`thip_table()` stacks with SQL's `UNION ALL`, which keeps every row: it does not
+remove repeated records. It checks only that the tables have the same column
+names and types, and stops with an error if they do not. Matching names and
+types cannot tell you whether a column is coded the same way in every table, so
+before you rely on a column, compare its values across `source_table`.
+
+If the same record were in two tables, it would be counted twice, so check
+whether any `tran_id` appears more than once:
+
+```{r repeated-ids}
+admissions |>
+  count(tran_id) |>
+  filter(n > 1) |>
+  count(name = "repeated_ids")
+```
+
+In the example, none does. Run the same check on the THIP tables you use. If
+some do, look at those records side by side before you decide how to count them.
+
+Three more habits for stacking:
+
+- Stack only tables of the same kind: the yearly inpatient tables together, and
+  other records, such as COVID-19 vaccinations, in a query of their own.
+- Use table names without `_local` (those are storage pieces of the same data;
+  see [Meet the THIP data](meet-the-data.html)). `thip_table()` stops with an
+  error if you give one.
+- Mind the argument name: `thip_columns()` takes `table`, because it describes
+  one table, while `thip_table()` takes `tables`, because it can stack several.
+
+## dplyr and SQL, side by side
+
+If you know SQL, this table maps each dplyr verb to the part of the query it
+writes. If SQL is new to you, the last column says what each one does.
+
+| dplyr | SQL | What it does |
+|---|---|---|
+| `filter()` | `WHERE` | keeps rows that meet a condition |
+| `select()` | `SELECT` | keeps columns |
+| `mutate()` | a computed column in `SELECT`, `... AS name` | adds or changes a column |
+| `group_by()` + `summarise()` | `GROUP BY`, with `COUNT()`, `AVG()` and so on | one row per group |
+| `count()` | `COUNT(*)` with `GROUP BY` | counts rows per group |
+| `distinct()` | `SELECT DISTINCT` | drops repeated rows |
+| `arrange()` | `ORDER BY` | sorts |
+| `inner_join()` | `INNER JOIN` | keeps rows found in both tables |
+| `left_join()` | `LEFT JOIN` | adds columns from another table |
+| `head(10)` | `LIMIT 10` | keeps the first rows |
+| `collect()` | runs the query and fetches every row | brings the result into R |
+
+## Read more
+
+- [Databases](https://r4ds.hadley.nz/databases.html), a chapter of *R for Data
+  Science*: dbplyr and SQL from the start.
+- [Introduction to dbplyr](https://dbplyr.tidyverse.org/articles/dbplyr.html):
+  how queries are built and run.
+- [Function translation](https://dbplyr.tidyverse.org/articles/translation-function.html):
+  which R functions dbplyr turns into SQL.
+- [Introduction to dplyr](https://dplyr.tidyverse.org/articles/dplyr.html): the
+  verbs themselves, on ordinary data frames.
+
+## In short
+
+- There are two places: the tables and the heavy work stay on the database;
+  your code and small results live in R.
+- dplyr verbs build one query, which the database runs when you print or
+  `collect()` it. `show_query()` shows its SQL.
+- `filter()`, `select()`, `mutate()`, `summarise()`, `count()`, `arrange()`,
+  `distinct()` and joins between database tables all run on the database. A
+  database table cannot be joined to a data frame in R; `thip_window()` fetches
+  records for people you hold in R.
+- Inside verbs, use functions dbplyr can translate; your own R functions are
+  not translated. THIP's ClickHouse handles a few functions differently from
+  the example's DuckDB.
+- `collect()` only small results: filter and summarise first, and count the
+  rows when you are not sure.
+- Across yearly tables, records add up but people do not: count people with
+  `n_distinct(pid)` on the stacked table.
+- `thip_table()` stacks yearly tables and keeps every row; check whether any
+  `tran_id` appears more than once.
+
+Next: [From question to cohort](question-to-cohort.html) starts the worked
+question, readmission after appendicitis, and uses `thip_table()` to convert
+dates.
+
+```{r disconnect, include = FALSE}
+DBI::dbDisconnect(con)
+```
