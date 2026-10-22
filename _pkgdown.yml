@@ -41,6 +41,8 @@ reference:
   - thip_columns
   - thip_table
   - thip_date_audit
+  - thip_source_summary
+  - thip_run_info
 - title: Filter, retrieve and flag
   contents:
   - thip_filter_icd

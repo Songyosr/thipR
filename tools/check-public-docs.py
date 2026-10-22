@@ -21,7 +21,8 @@ WEB_ARTICLES = {"meet-the-data", "database-from-r", "question-to-cohort", "look-
 REFERENCES = {"collect.thip_window_plan", "icd_flag", "thip_collect", "thip_columns",
               "thip_connect", "thip_disconnect", "thip_filter_icd", "thip_setup",
               "thip_table", "thip_tables", "thip_window", "thip_date_audit",
-              "thip_connect_example", "thip_fields"}
+              "thip_connect_example", "thip_fields",
+              "thip_source_summary", "thip_run_info"}
 PAGES = {"index", "authors", "404", "articles/index", "reference/index", "news/index",
          "AGENTS"}  # pkgdown renders every root .md; AGENTS.md is public guidance
 PAGES |= {"articles/" + name for name in GUIDES | WEB_ARTICLES | REDIRECTS}

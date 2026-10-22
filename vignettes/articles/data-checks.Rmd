@@ -328,6 +328,35 @@ the plausible range of ages from your question (0 is a real age for a newborn),
 and count the records outside it in your flow chart rather than dropping them
 unseen.
 
+## The checks in one call
+
+`thip_source_summary()` puts the table-level checks of this guide in one table:
+for each source table, its records and people, the first and last date, the
+months with records against the months from first to last (a gap shows as a
+difference), missing dates and `tran_id` values held by more than one record:
+
+```{r source-summary}
+thip_source_summary(admissions, date = "adm",
+                    by = "source_table")
+```
+
+With `by = character()` it summarises the whole stack, so a record held by two
+tables counts as a repeated key.
+
+Tables change: a table can be refreshed, or gain or lose records, between your
+runs. `thip_run_info()` records each table's row count, when it was counted and
+the versions of R, thipR and the database. Keep it with your results, so you
+can tell later which state of the data they came from:
+
+```{r run-info}
+run_info <- thip_run_info(
+  con, c("nhso2565", "nhso2566", "nhso2567")
+)
+run_info
+```
+
+`attr(run_info, "versions")` holds the versions.
+
 ## A checklist before analysis
 
 Run these on the tables you will use, and keep what they find:
@@ -347,10 +376,10 @@ Run these on the tables you will use, and keep what they find:
 - **Empty values and ranges:** count `NA` and `""` in the columns you rely on,
   and check ages for impossible values.
 - **Decisions:** write down what each check found and what you decided, with
-  counts, for your methods.
+  counts, for your methods, and keep `thip_run_info()` with your results.
 
-Next: [Using THIP data responsibly](responsible-use.html) sets out what THIP's
-conditions ask of you, and what you may take out of THIP.
+Next: [Using THIP data responsibly](responsible-use.html) covers where records
+stay, small counts, credentials and the decisions that are yours.
 
 ```{r disconnect, include = FALSE}
 DBI::dbDisconnect(con)

@@ -1,3 +1,13 @@
+# thipR (development version)
+
+- New `thip_source_summary()`: one row per source table with records, people,
+  first and last date, months with records against months spanned, missing
+  dates and repeated record keys, from a lazy table or a data frame.
+
+- New `thip_run_info()`: row counts of the tables you used, when they were
+  counted and the versions of R, thipR, its dependencies and the database
+  server, to keep with a study's outputs.
+
 # thipR 0.3.0
 
 - New "Learn THIP data" course on the website: eight guides, from meeting the
