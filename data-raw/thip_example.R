@@ -21,7 +21,8 @@
 # - about 3,000 people and 10,000 admissions; admissions rise with age and with
 #   person-level chronic conditions, which recur as secondary diagnoses;
 # - an appendicitis cohort (K35x with appendectomy 4709/4701) with 30-day
-#   readmissions (T814, K650, R101), more likely in people with diabetes;
+#   readmissions (T814, K650, R101), more likely in people with diabetes
+#   (a final teaching step gives about 40 of these patients diabetes);
 # - deliveries (O800; O820 with 741), each with a newborn person (Z380,
 #   dischs 6) and some newborn jaundice readmissions (P599) within 14 days;
 # - repeated breast cancer chemotherapy admissions (Z511 with C509);
@@ -431,6 +432,24 @@ dot <- which(ep$kind == "bg" & ep$flaw == "" & sdx_mat[, 1] == "E119")
 dot <- dot[sample.int(length(dot), 1L)]
 sdx_mat[dot, 1] <- "E11.9"
 ep$flaw[dot] <- "dot_sdx"
+
+# Teaching tweak: enough appendicitis patients with diabetes for the worked
+# example's comparison. It uses its own seed and then restores the main random
+# stream, so the rest of the data is unchanged: it only adds a diabetes code to
+# every record of 32 more appendicitis patients, 6 of them readmitted.
+main_stream <- .Random.seed
+set.seed(20261022)
+readm <- seq_along(a) %in% ra
+pick <- function(i, k) i[sample.int(length(i), k)]
+new_dm <- a[c(pick(which(readm & !dm[a]), 6L), pick(which(!readm & !dm[a]), 26L))]
+for (p in new_dm) {
+  code <- draw(c("E119", "E1165"), prob = c(85, 15))
+  for (r in which(ep$person == p)) {
+    j <- match("", sdx_mat[r, ])
+    if (!is.na(j)) sdx_mat[r, j] <- code
+  }
+}
+assign(".Random.seed", main_stream, envir = globalenv())
 
 # Times, discharge status, weight ------------------------------------------------------
 
