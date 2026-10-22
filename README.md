@@ -1,6 +1,6 @@
 # thipR
 
-**Prepare THIP sources, retrieve person-specific histories and flag custom ICD lists in R.**
+**Work with THIP's yearly inpatient tables in R: stack them, look back and follow up from each entry, and flag conditions with your own code lists.**
 
 thipR supports read-only analysis inside the THIP notebook platform using DBI
 and dbplyr. Filter records in the database, collect the records you need, then
@@ -27,44 +27,55 @@ THIP platform. Never put credentials in notebook cells or source files.
 
 ## Quick start
 
-Run this example inside an authorized THIP R session. Select tables and a date
-range appropriate to your study, and verify their schema and date formats first.
-These snippets are illustrative and are not executed when building this page.
+Run this in a notebook inside your THIP account. It is the recipe from
+[From question to cohort](https://songyosr.github.io/thipR/articles/question-to-cohort.html):
+it selects admissions with a principal diagnosis of appendicitis (codes starting
+K35) and keeps each person's first as their entry. Choose the tables, dates and
+codes for your own study.
 
 ```r
 library(thipR)
 library(dplyr)
 
-# Once, if the platform has not supplied your database configuration:
+# Once, unless the platform supplies your database settings:
 # thip_setup()
 con <- thip_connect()
 
-ipd <- thip_table(
-  con, tables = c("nhso2567", "nhso2568"), .id = "source_table",
-  dates = c(adm = "dateadm", dsc = "datedsc", death = "death_date"),
-  date_format = c(adm = "%Y%m%d", dsc = "%Y%m%d", death = "%Y-%m-%d")
+# The yearly tables as one query, with dates converted.
+admissions <- thip_table(
+  con,
+  tables = c("nhso2565", "nhso2566", "nhso2567"),
+  .id = "source_table",
+  dates = c(adm = "dateadm", dsc = "datedsc"),
+  date_format = c(adm = "%Y%m%d", dsc = "%Y%m%d")
 )
 
-# Still a lazy database query; adm is the converted Date column.
-candidates <- ipd |>
-  filter(adm >= as.Date("2023-10-01"), adm < as.Date("2023-10-08")) |>
-  thip_filter_icd(codes = "K35", cols = "pdx", match = "prefix") |>
-  select(pid, tran_id, adm, pdx)
+# The candidate records come into R at collect().
+candidates <- admissions |>
+  filter(adm >= as.Date("2021-10-01"),
+         adm <= as.Date("2024-08-31")) |>
+  thip_filter_icd(codes = "K35", cols = "pdx",
+                  match = "prefix") |>
+  collect()
 
-entries <- collect(candidates)  # Records enter this R session here.
+# One entry per person: the first with a discharge date.
+entries <- candidates |>
+  filter(!is.na(dsc)) |>
+  arrange(pid, adm, tran_id) |>
+  distinct(pid, .keep_all = TRUE) |>
+  select(pid, entry_id = tran_id,
+         adm_date = adm, dsc_date = dsc)
+
 DBI::dbDisconnect(con)
 ```
 
-This selects candidate admissions, not a finalized cohort or a validated
-clinical definition. Date conversion retains original text and stays lazy.
-Use [`thip_date_audit()`](https://songyosr.github.io/thipR/reference/thip_date_audit.html)
-to distinguish missing or blank text from conversion failures **before** filtering
-on converted dates. Audits execute aggregate queries over the selected scope.
-
-For person-specific histories, `thip_window()` takes a source and an entry roster
-with IDs and dates; use `date = "adm"` for the converted source date. Its
-`collect()` method retrieves complete person batches. Use `icd_flag()` on local
-records to flag multiple custom condition lists. See the runnable examples below.
+Before you filter on dates, count the ones that could not be read with
+[`thip_date_audit()`](https://songyosr.github.io/thipR/reference/thip_date_audit.html).
+From `entries`, [`thip_window()`](https://songyosr.github.io/thipR/reference/thip_window.html)
+fetches each person's records in a look-back or follow-up window, and
+[`icd_flag()`](https://songyosr.github.io/thipR/reference/icd_flag.html) flags
+conditions with your own code lists. The guides below run every step on an
+example database.
 
 ## Learn THIP data
 
@@ -78,24 +89,25 @@ The guides form a short course. They run on an invented example database
 | [Working with a database from R](https://songyosr.github.io/thipR/articles/database-from-r.html) | Where your code runs, and when data come into R |
 | [From question to cohort](https://songyosr.github.io/thipR/articles/question-to-cohort.html) | Turn a research question into one entry per person |
 | [Look back and follow up](https://songyosr.github.io/thipR/articles/look-back-follow-up.html) | Fetch each person's history and outcomes around their entry |
-| [Flag conditions locally](https://songyosr.github.io/thipR/articles/condition-flags.html) | Use custom code lists and exact or prefix matching |
-| [Worked cohort example](https://songyosr.github.io/thipR/articles/getting-started.html) | Run a small end-to-end analysis |
+| [Flag conditions](https://songyosr.github.io/thipR/articles/condition-flags.html) | Turn reviewed code lists into flags per person or entry |
+| [Worked example](https://songyosr.github.io/thipR/articles/getting-started.html) | The whole course in one short analysis |
+| [Check before you trust](https://songyosr.github.io/thipR/articles/data-checks.html) | Checks to run on the data before relying on it |
+| [Using THIP data responsibly](https://songyosr.github.io/thipR/articles/responsible-use.html) | What THIP's conditions and good practice ask of you |
 
 The [function reference](https://songyosr.github.io/thipR/reference/index.html)
 describes arguments and return values. [News](https://songyosr.github.io/thipR/news/index.html)
 records release and development changes. Installed builds containing vignettes
-also support `vignette("getting-started", package = "thipR")`.
+also support `vignette("start-here", package = "thipR")`.
 
 ## Scope
 
-- Database connections use read-only request settings. Account permissions and
-  server limits remain controlled by the platform.
-- Table unions preserve duplicates. Source coverage, identity linkage, clinical
-  definitions and cohort eligibility must be established for each study.
-- Ordinary dplyr verbs, `collect()` and `DBI::dbDisconnect()` remain the standard
-  interfaces. Collecting a result requires enough R memory for that result.
-- No clinical definitions, automatic deduplication or survival-analysis decisions
-  are supplied by the package.
+- thipR only reads from the database; your THIP account and the platform decide
+  what you can see and how much one query may return.
+- Stacking tables keeps every row; thipR does not remove repeated records.
+- For each study, check which years your tables cover and whether `pid`
+  identifies the same person in every table you stack.
+- thipR supplies no clinical definitions: the code lists, eligibility rules and
+  analysis choices are yours.
 
 Contributors can find build and test instructions in `dev/CONTRIBUTING.md`.
 Please report problems and suggestions through GitHub issues.

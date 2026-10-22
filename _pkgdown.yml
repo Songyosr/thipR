@@ -23,8 +23,10 @@ articles:
   - articles/database-from-r
   - articles/question-to-cohort
   - articles/look-back-follow-up
-  - condition-flags
-  - getting-started
+  - articles/condition-flags
+  - articles/getting-started
+  - articles/data-checks
+  - articles/responsible-use
 redirects:
 - ["articles/thip-sources.html", "articles/question-to-cohort.html"]
 - ["articles/time-windows.html", "articles/look-back-follow-up.html"]

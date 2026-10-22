@@ -11,12 +11,13 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
-GUIDES = {"start-here", "condition-flags", "getting-started"}
+GUIDES = {"start-here"}
 # Old guide URLs kept as redirects to their replacements (see _pkgdown.yml).
 REDIRECTS = {"thip-sources", "time-windows"}
 # Website-only articles (vignettes/articles); pkgdown also writes a redirect page
 # for each at articles/articles/<name>.
-WEB_ARTICLES = {"meet-the-data", "database-from-r", "question-to-cohort", "look-back-follow-up"}
+WEB_ARTICLES = {"meet-the-data", "database-from-r", "question-to-cohort", "look-back-follow-up",
+                "condition-flags", "getting-started", "data-checks", "responsible-use"}
 REFERENCES = {"collect.thip_window_plan", "icd_flag", "thip_collect", "thip_columns",
               "thip_connect", "thip_disconnect", "thip_filter_icd", "thip_setup",
               "thip_table", "thip_tables", "thip_window", "thip_date_audit",

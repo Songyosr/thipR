@@ -41,9 +41,10 @@ thip_window <- function(data, cohort, date, index = NULL, window = NULL,
 print.thip_window_plan <- function(x, ...) {
   cat("THIP window plan: ", nrow(x$windows), " entries; ",
       length(unique(x$windows$person)), " people\n", sep = "")
-  cat("Match source ", x$source_id, " to cohort ", x$cohort_id,
-      "; record date ", x$date, "; bounds ", x$bounds, "\n", sep = "")
-  cat("Execution pending. Use dplyr::collect(); source records have not been read.\n")
+  cat("Match source ", x$source_id, " to cohort ", x$cohort_id, "\n",
+      "Record date ", x$date, "; bounds ", x$bounds, "\n", sep = "")
+  cat("Execution pending: source records have not been read.\n",
+      "Use dplyr::collect() to run the plan.\n", sep = "")
   invisible(x)
 }
 

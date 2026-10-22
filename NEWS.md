@@ -1,5 +1,20 @@
 # thipR (development version)
 
+- New "Learn THIP data" course on the website: eight guides, from meeting the
+  data to a worked appendicitis readmission example, data checks and responsible
+  use. They run on the example database and replace the old guides; the old
+  "Prepare and filter sources" and "Retrieve time windows" pages redirect to their
+  replacements. `vignette("getting-started")` and `vignette("condition-flags")`
+  are no longer installed; `vignette("start-here")` is.
+
+- New dataset `thip_fields`: every documented column of THIP's yearly inpatient
+  tables, with its group, description, format and code meanings.
+
+- `icd_flag()` and `thip_filter_icd()` now also reject ranges written with an en
+  dash or another Unicode dash (as copied from documents), and code lists with
+  Unicode spaces, instead of silently matching nothing. The help pages now say
+  plainly that `*`, `+` and `/` are kept as characters, so `"E11*"` matches no code.
+
 - New `thip_connect_example()` opens a small synthetic THIP-like database
   (DuckDB, three invented yearly inpatient tables) so workflows can be practised,
   taught and tested without THIP access. thipR's functions and ordinary dplyr

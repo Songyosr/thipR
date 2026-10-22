@@ -1,0 +1,352 @@
+---
+title: "Check before you trust"
+description: >
+  Checks to run on the tables before you rely on them: dates, months, keys,
+  length of stay, code shapes and empty values.
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+# Print results at most 60 characters wide, "#> " included, to fit a printed page.
+options(width = 57)
+# Keep the build machine out of printed query headers (load duckdb first, as it
+# registers its own description when it loads).
+loadNamespace("duckdb")
+registerS3method("db_connection_describe", "duckdb_connection",
+                 function(con, ...) "example database", envir = asNamespace("dbplyr"))
+```
+
+The [Worked example](getting-started.html) trusted its tables; on THIP, run
+these checks before you do. Your code rests on assumptions about the data: that
+dates can be read, that each record appears once, that codes are written the
+way your comparisons expect. When one fails, the code does not stop: a filter
+on a date that could not be read drops the record, and a comparison with
+`"K35"` misses `"k358"`, without a message. A check turns silent failures like
+these into counts you can see.
+
+Each section below says what one check tests, gives the code, and says what to
+look for and what to do about it. The code brings back only summaries: counts,
+never records.
+
+The example database is invented, with a few values damaged on purpose ([Meet
+the THIP data](meet-the-data.html)), so its results show how each check works,
+not what THIP's tables hold. On THIP, connect with `thip_connect()` instead and
+run every check on the tables you use.
+
+## The tables to check
+
+Stack the tables you will use, with their dates converted. This is the
+`admissions` query from [From question to cohort](question-to-cohort.html):
+
+```{r admissions}
+library(thipR)
+library(dplyr, warn.conflicts = FALSE)
+
+con <- thip_connect_example()
+
+admissions <- thip_table(
+  con,
+  tables = c("nhso2565", "nhso2566", "nhso2567"),
+  .id = "source_table",
+  dates = c(adm = "dateadm", dsc = "datedsc"),
+  date_format = c(adm = "%Y%m%d", dsc = "%Y%m%d")
+)
+```
+
+## Dates that cannot be read
+
+`thip_date_audit()` compares each converted date with its raw text and counts,
+for each table, the values that were missing, blank, parsed (read) or failed;
+[From question to
+cohort](question-to-cohort.html#audit-the-dates-before-you-filter) explains
+each count. Audit both dates, table by table:
+
+```{r date-audit}
+date_audit <- thip_date_audit(
+  admissions,
+  columns = c(adm = "dateadm", dsc = "datedsc"),
+  by = "source_table"
+)
+
+date_audit |>
+  arrange(field, source_table) |>
+  select(-raw_column) |>
+  knitr::kable()
+```
+
+Every admission date was read. Of the discharge dates,
+`r sum(date_audit$n_failed)` failed and `r sum(date_audit$n_blank)` is blank.
+To see what the failures say, count the raw text of every discharge date that
+did not become a date:
+
+```{r date-failures}
+admissions |>
+  filter(is.na(dsc)) |>
+  count(source_table, datedsc) |>
+  arrange(source_table, datedsc)
+```
+
+The two failures read `20230229`, 29 February 2023, a day that did not exist.
+A date that was read can still be wrong. Count the stays that end before they
+start:
+
+```{r date-order}
+admissions |>
+  filter(dsc < adm) |>
+  count(name = "ends_before_start")
+```
+
+There are none in the example; the check of `los`, below, compares the dates
+further. On your tables, **look for** failed or blank values in any date you
+will use, `n_inconsistent` above zero, failures that gather in one table, and
+stays that end before they start. Audit every other date you use the same way,
+such as `death_date`, whose format is `"%Y-%m-%d"`; most death dates are blank,
+which is not a failure.
+
+**What to do.** thipR does not repair dates; you decide what a failure means for
+your study. If a step needs the date, as follow-up needs the discharge date, a
+record without it cannot take that step: leave it out and count it in your flow
+chart. Many failures in one table or one month point to a problem in the data
+rather than in single records; raise it with the THIP team.
+
+## Records per month and table
+
+Your study period should sit in months that the tables cover evenly: no month
+missing, no sudden jump, and no month held by two tables. Count the records by
+table and month of admission, taking the month from the raw text so that every
+record counts, even one whose date failed to convert:
+
+```{r monthly}
+monthly <- admissions |>
+  count(source_table, month = substr(dateadm, 1, 6),
+        name = "records") |>
+  collect()
+
+monthly |>
+  group_by(source_table) |>
+  summarise(first = min(month), last = max(month),
+            months = n(), fewest = min(records),
+            most = max(records))
+```
+
+In the example, each table holds the 12 months of its fiscal year, October to
+September, so the tables meet with no gap and no shared month. Every month has
+between `r min(monthly$records)` and `r max(monthly$records)` records. To see
+the months in order, plot one dot per table and month:
+
+```{r monthly-plot, fig.asp = 0.55, fig.alt = "Records per month of admission in the example, October 2021 to September 2024: one dot a month, in an even band with no gaps, jumps or doubled months."}
+monthly <- monthly |>
+  mutate(first_day = as.Date(paste0(month, "01"),
+                             format = "%Y%m%d"))
+
+plot(records ~ first_day, data = monthly,
+     ylim = c(0, max(monthly$records)),
+     xlab = "Month of admission", ylab = "Records")
+```
+
+In the example the dots form an even band. On your tables, **look for** a table
+with fewer months than its span from first to last (a gap), two tables with
+records in the same month (an overlap: two dots in one month), and a month far
+above or below its neighbours (a jump).
+
+**What to do.** Find out why before you study the months involved. Keep the
+study period, and the look-back and follow-up windows around it, inside months
+the tables cover fully ([Look back and follow
+up](look-back-follow-up.html#windows-and-the-years-you-stacked)). Where two
+tables share months, check the keys, next, before you count anything in them.
+
+## Each record once
+
+Stacking keeps every row, so a record held by two tables, or twice by one,
+counts twice. Count the `tran_id` values that appear more than once, and the
+person-days (one person, one admission date) with more than one record:
+
+```{r keys}
+admissions |>
+  count(tran_id) |>
+  filter(n > 1) |>
+  count(name = "repeated_ids")
+
+admissions |>
+  count(pid, dateadm) |>
+  filter(n > 1) |>
+  count(name = "repeated_person_days")
+```
+
+Both are zero in the example; on your tables, **look for** any count above zero.
+The first finds a record that appears twice. Only the second can find one stay
+written as two records with different keys.
+
+**What to do.** Look at the records involved side by side, inside THIP: their
+tables, dates, diagnoses and discharge status. Two records of one person on one
+day may be the same stay twice, a transfer between hospitals, or two real
+admissions. Decide how to count each kind, write the rule into your protocol and
+count the records it removes. Do not drop repeats with `distinct()` before you
+have looked.
+
+## Length of stay against the dates
+
+Some columns record what you could also work out from others. `los`, the length
+of stay in days, should follow from the admission and discharge dates. Count the
+differences between `los` and the days from admission to discharge; a single
+value means the two agree, and shows how `los` counts days:
+
+```{r los}
+los_check <- admissions |>
+  mutate(days = as.integer(dsc - adm),
+         difference = as.integer(los) - days) |>
+  count(source_table, difference) |>
+  collect() |>
+  arrange(source_table, difference)
+
+los_check
+```
+
+Wherever both dates were read, `los` is the number of days between them plus 1:
+the example counts both the admission day and the discharge day. The
+`r sum(los_check$n[is.na(los_check$difference)])` missing differences are the
+records whose discharge date failed or is blank. On your tables, **look for**
+more than one difference, or differences that gather in one table.
+
+On THIP, `as.integer()` stops the whole query at text that is not a number, such
+as an empty `los`. If that happens, count the empty values first, as below, and
+see [Working with a database from
+R](database-from-r.html#the-example-is-duckdb-thip-is-clickhouse).
+
+**What to do.** Choose which value your study uses, and say why. Windows in this
+course are measured from dates, so the dates decide and `los` checks them. Where
+the two agree everywhere else, `los` could fill a failed discharge date, as
+`adm + los - 1` where, as in the example, `los` counts both days; that is a rule
+for your protocol, not a repair to make quietly. Where they disagree, look at
+examples before you choose: either column can be the wrong one.
+
+## The shape of codes
+
+THIP's data dictionary describes the diagnosis columns as ICD-10 codes ([Meet
+the THIP data](meet-the-data.html#diagnoses-and-procedures)); to check how
+yours are written, first count every code in `pdx` and the 20 secondary
+diagnosis columns:
+
+```{r codes}
+dx_cols <- c("pdx", paste0("sdx", 1:20))
+
+count_codes <- function(column) {
+  admissions |>
+    count(code = .data[[column]]) |>
+    collect() |>
+    mutate(column = column)
+}
+
+codes <- bind_rows(lapply(dx_cols, count_codes))
+```
+
+`count_codes()` counts the values of one column on the database
+(`.data[[column]]` is the column whose name is in `column`), and `lapply()` runs
+it for each of the `r length(dx_cols)` columns. Only codes and their counts come
+into R, so any R function can check their shape. Mark each code's length and
+whether it holds lower-case letters or a dot, then count the shapes (`wt = n`
+adds up how often each code was written) and list the odd codes:
+
+```{r code-shapes}
+shapes <- codes |>
+  filter(code != "") |>
+  mutate(length = nchar(code),
+         lower_case = grepl("[a-z]", code),
+         dot = grepl(".", code, fixed = TRUE))
+
+count(shapes, length, lower_case, dot, wt = n)
+
+filter(shapes, lower_case | dot)
+```
+
+In the example, codes have three to five characters, and two are odd: `k358`, a
+principal diagnosis in lower case, and `E11.9`, a secondary diagnosis with a
+dot. On your tables, **look for** lengths you did not expect, lower-case
+letters, dots, and spaces, which add to the length.
+
+**What to do.** `thip_filter_icd()` and `icd_flag()` clean codes before they
+compare them ([Flag conditions](condition-flags.html#codes-are-cleaned-first));
+before your own comparisons, clean them the same way, as in
+`toupper(gsub(".", "", trimws(code), fixed = TRUE))`.
+
+## Empty values and ages
+
+`is.na()` finds missing values, `NA`, but not empty text, `""`, so your filters
+need to know which one a column holds. Count both in the columns you rely on,
+with the same pattern as `count_codes()`:
+
+```{r empty}
+key_cols <- c("pid", "tran_id", "sex", "age_y", "dateadm",
+              "datedsc", "los", "pdx")
+
+count_empty <- function(column) {
+  admissions |>
+    summarise(
+      missing = sum(is.na(.data[[column]]), na.rm = TRUE),
+      blank = sum(.data[[column]] == "", na.rm = TRUE)
+    ) |>
+    collect() |>
+    mutate(column = column, .before = missing)
+}
+
+bind_rows(lapply(key_cols, count_empty))
+```
+
+No value is `NA`, and the only empty one is the blank discharge date that the
+audit found.
+
+Numbers stored as text need a range check. Count the values of `age_y` on the
+database, then convert them in R, where text that is not a number becomes `NA`
+instead of stopping the query:
+
+```{r ages}
+ages <- admissions |>
+  count(age_y) |>
+  collect() |>
+  mutate(age = as.integer(age_y))
+
+range(ages$age, na.rm = TRUE)
+
+ages |>
+  filter(is.na(age) | age < 0 | age > 110)
+```
+
+Ages run from `r min(ages$age, na.rm = TRUE)` to `r max(ages$age, na.rm = TRUE)`,
+and none is empty, unreadable or outside 0 to 110. On your tables, **look for**
+`NA` or empty values in columns that should always be filled, such as `pid`,
+`tran_id`, `dateadm` and `pdx`, and ages your question does not allow.
+
+**What to do.** Decide what an empty value means in each column: unknown, not
+applicable or an error. Then write filters that say so: `filter(x != "")` drops
+empty text and `NA` alike, while `filter(!is.na(x))` keeps empty text. Choose
+the plausible range of ages from your question (0 is a real age for a newborn),
+and count the records outside it in your flow chart rather than dropping them
+unseen.
+
+## A checklist before analysis
+
+Run these on the tables you will use, and keep what they find:
+
+- **Dates:** audit every date you use, by table, read the raw text of the
+  failures, and count stays that end before they start.
+- **Months:** count records by table and month, and explain any gap, jump or
+  overlap.
+- **Keys:** check that no `tran_id` repeats, and look at anyone with two records
+  on one day.
+- **People across tables:** windows across tables assume `pid` means the same
+  person in every table you stack; confirm this for your tables.
+- **Length of stay:** compare `los`, and columns like it, with the dates, and
+  choose which to use.
+- **Codes:** check the shape of the codes in every column you search, and clean
+  them before your own comparisons.
+- **Empty values and ranges:** count `NA` and `""` in the columns you rely on,
+  and check ages for impossible values.
+- **Decisions:** write down what each check found and what you decided, with
+  counts, for your methods.
+
+Next: [Using THIP data responsibly](responsible-use.html) sets out what THIP's
+conditions ask of you, and what you may take out of THIP.
+
+```{r disconnect, include = FALSE}
+DBI::dbDisconnect(con)
+```
