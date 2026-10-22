@@ -67,6 +67,8 @@ history <- admissions |>
   select(pid, tran_id, source_table, adm, dsc, pdx, num_range("sdx", 1:20)) |>
   thip_window(entries, date = "adm", index = "adm_date", window = c(-365L, 0L)) |>
   collect()
+
+c(entries = nrow(entries), history = nrow(history))
 ```
 
 There are `r nrow(entries)` entries, and `history` holds `r nrow(history)`
@@ -74,10 +76,11 @@ records from the year before them.
 
 ## Flag diabetes in each period
 
-In this course, diabetes is any code starting E10 to E14, the diabetes block of
-ICD-10, in any diagnosis position. Write it as a named list, whose name becomes
-the column of answers. The lists in this guide illustrate the method and are
-not validated definitions: review your own, and report them with your methods.
+In this course, an entry has diabetes when a code starting E10 to E14 appears
+in any diagnosis position on the entry admission or in the year before it.
+Write the codes as a named list, whose name becomes the column of answers. The
+lists in this guide illustrate the method and are not validated definitions:
+review your own, and report them with your methods.
 
 The entry admission is in `candidates`, under its `tran_id`. Keep the
 candidates that became entries, rename `tran_id` to `entry_id` so that both
@@ -160,14 +163,13 @@ the year before, and `r sum(!flags$diabetes)` do not. Looking back matters:
 have no diabetes code on the entry admission, only on an admission in the year
 before.
 
-Reading `NA` as `FALSE` is a study decision: state it in your methods. Where
-part of an entry's year before lies before the stacked tables ([Look back and
-follow up](look-back-follow-up.html)), `FALSE` means "not recorded in the
-stacked years".
+Reading `NA` as `FALSE` is a study decision: state it in your methods. For the
+`r sum(entries$adm_date < as.Date("2022-10-01"))` entries admitted in fiscal
+year 2565, part of the year before lies before the first stacked table ([Look
+back and follow up](look-back-follow-up.html#windows-and-the-years-you-stacked)),
+so their `FALSE` covers less than a year.
 
-A flag records whether a code appears, not how often. To require a code on two
-admissions, flag each admission (`id = "tran_id"`) and count the matching
-admissions per entry: an admission with two codes on the list is one admission.
+A flag records whether a code appears, not how often.
 
 ## Several lists at once
 
@@ -187,17 +189,15 @@ summarise(several, across(-entry_id, sum))
 ```
 
 Each name became a column. Names must be unique and differ from the ID column;
-an empty list, `character(0)`, matches no code.
+a condition with no codes, `character(0)`, matches nothing.
 
 ## Exact or prefix
 
 `match = "exact"`, the default, matches whole codes; `"prefix"` matches every
-code that starts with one on your list. Neither reads a code as a pattern, so a
-wildcard or regular expression is no substitute for a list. The choice matters
-because ICD-10-TM, which Thai hospitals use, adds a fifth character to many
-codes: F10.3, for example, has F10.30 and F10.31 beneath it. An exact list
-written at three or four characters, such as one exported from a tool that
-offers only four, silently misses them. Compare three lists:
+code that starts with one on your list. The choice matters because Thai records
+often carry a fifth character: F10.3, for example, has F10.30 and F10.31
+beneath it. With `"exact"`, a list written only at three or four characters
+silently misses them. Flag three codes both ways:
 
 ```{r exact-prefix}
 e11 <- list(e11 = "E11", e116 = "E116", e119 = "E119")
@@ -233,15 +233,16 @@ icd_flag(entry_admissions, dm, id = "entry_id", cols = paste0("sdx", 1:20),
   count(diabetes)
 ```
 
-Name the positions in the call, where readers can see them: `pdx` alone asks
-what the admission was for; every position asks what was recorded during it.
+Choose `cols` for your question: `pdx` alone asks what the admission was for;
+every position asks what was recorded during it.
 
 ## Codes are cleaned first
 
 Before comparing, thipR cleans every code, on your lists and in the records: it
 removes dots, makes letters upper case and trims the spaces around each code.
-`thip_filter_icd()` uses the same rules on the database. Count the records whose
-first secondary diagnosis is exactly E119, then try a carelessly typed list:
+`thip_filter_icd()` uses the same rules on the database. Across all admissions,
+count the records whose first secondary diagnosis is E119, however it is
+written, then try a carelessly typed list:
 
 ```{r cleaned}
 admissions |>
@@ -256,9 +257,9 @@ icd_flag(entry_admissions, messy, id = "entry_id", cols = dx_cols) |>
 
 One record in the example writes its code with a dot, `E11.9`, and the search
 still finds it. The careless list matches E119 and E1165 and flags the same
-`r sum(on_entry$diabetes)` entry admissions. Counts like the first one also show
-which codes occur, at which lengths and positions: look before you freeze a
-list.
+`r sum(on_entry$diabetes)` entry admissions. Before you freeze a list, count
+which codes occur, at which lengths and in which positions, as in [Check before
+you trust](data-checks.html#the-shape-of-codes).
 
 ## A quick look with sdx_index
 
@@ -269,7 +270,7 @@ a few codes. Count the entry admissions that each pattern finds:
 
 ```{r quick-look}
 sdx_text <- entry_admissions$sdx_index
-patterns <- c("E11", "K35", "E116", "^E11", "(^| )E11", "E11.9", "e11")
+patterns <- c("E11", "K35", "^E11", "E11.9")
 found <- sapply(patterns, function(p) sum(grepl(p, sdx_text)))
 found
 ```
@@ -279,14 +280,9 @@ found
 
 - **It leaves out `pdx`.** `"K35"` finds nothing, although every entry
   admission has appendicitis there.
-- **It matches part of a code.** `"E116"` finds E1165: right for a prefix,
-  wrong for an exact code. It also needs a start-of-code anchor: `^` is the
-  start of the whole text, so `"^E11"` checks only the first code and finds
-  `r found[["^E11"]]`, while `"(^| )E11"`, at the start or after a space, finds
-  all `r found[["(^| )E11"]]`.
-- **A dot means any character.** `"E11.9"` asks for five characters and misses
-  every E119, so a code list written with dots misbehaves.
-- **Case matters.** `"e11"` finds nothing.
+- **Patterns are not codes.** `^` is the start of the whole text, not of each
+  code, so `"^E11"` checks only the first code and finds `r found[["^E11"]]`; a
+  dot means any character, so `"E11.9"` misses every E119; and case matters.
 - **It answers per record.** You still combine each entry's records, the year
   before included, and the `r sum(sdx_text == "")` blank values give `FALSE`,
   not `NA`.
@@ -305,26 +301,47 @@ comes out. `icd_flag()` answers per ID in R, from collected records and named
 lists. It refuses a query rather than collecting it for you, so `collect()`
 always marks where records come into R.
 
-Neither function expands notation. A range such as `"Q20-Q26"`, a wildcard such
-as `%` or `_`, a regular expression, or several codes in one string separated by
-commas or spaces stops with an error instead of quietly matching nothing. (`*`,
-`+` and `/` stay ordinary characters, for sources that write dagger and
-asterisk codes.) Write the codes out:
+## Ranges and wildcards
 
-```{r range}
-paste0("Q", 20:26)
+Neither `thip_filter_icd()` nor `icd_flag()` expands notation. A range written
+with a hyphen or a dash, such as `"Q20-Q26"`, the wildcards `%` and `_`,
+regular-expression symbols such as `^ $ ? | \` or brackets, and several codes
+in one string, separated by commas or spaces, stop with an error. `*`, `+` and
+`/` do not: some sources write them as part of a code (dagger and asterisk
+codes), so thipR keeps them, after removing dots. So `"E11*"` or `"E11.*"` is
+read as the code `E11*`:
+
+```{r literal}
+star <- icd_flag(entry_admissions, list(e11_star = "E11*", e11 = "E11"),
+                 id = "entry_id", cols = dx_cols, match = "prefix")
+summarise(star, across(-entry_id, sum))
 ```
 
-With `match = "prefix"`, it covers Q20 to Q26 and every code beneath them.
+`"E11*"` quietly matches nothing: no error, no warning, just `FALSE` for all
+`r nrow(star)` entry admissions. For E11 and everything beneath it, write
+`"E11"` with `match = "prefix"`, which finds `r sum(star$e11)`. For a range,
+write the codes out: `paste0("Q", 20:26)` with `match = "prefix"` covers Q20 to
+Q26 and every code beneath them.
 
 ## The flags table
 
-`flags` is what this guide built: one row per entry, with `entry_id` and
-`diabetes`, `TRUE` or `FALSE` for every entry:
+`flags`, one row per entry with `entry_id` and `diabetes`, is what the [Worked
+example](getting-started.html) uses. That guide builds it in one call: as
+`icd_flag()` combines all records with the same ID, it stacks the entry
+admissions on `history` and flags them together. Check that both ways agree:
 
-```{r flags-table}
-flags
+```{r one-call}
+one_call <- bind_rows(entry_admissions, history) |>
+  icd_flag(dm, id = "entry_id", cols = dx_cols, match = "prefix") |>
+  mutate(diabetes = coalesce(diabetes, FALSE))
+
+flags |>
+  left_join(one_call, by = "entry_id", suffix = c("", "_one_call")) |>
+  count(diabetes, diabetes_one_call)
 ```
+
+Every entry gets the same answer both ways, and `r sum(one_call$diabetes)`
+entries have diabetes.
 
 ## In short
 
@@ -333,14 +350,16 @@ flags
 - An entry with no records gets no row: start from `entries`, left-join, and
   decide what `NA` means. This course reads it as `FALSE`.
 - `"exact"` is the default; use `"prefix"` for lists written at three or four
-  characters, because ICD-10-TM adds a fifth. Name the positions in `cols`.
-- Dots, case and surrounding spaces are cleaned; ranges and wildcards stop with
-  an error, so write the codes out.
+  characters, because Thai records often carry a fifth. Choose the positions in
+  `cols` to fit the question.
+- Dots, case and surrounding spaces are cleaned. Ranges, `%` and `_` stop with
+  an error, but `E11*` is read literally and matches nothing: write the codes
+  out and use `"prefix"`.
 - `grepl()` on `sdx_index` is a quick look, not a flag. `thip_filter_icd()`
   filters on the database; `icd_flag()` flags collected records in R.
 
-Next: [Worked example](getting-started.html) joins `flags` to the readmissions
-and compares people with and without diabetes.
+Next: [Worked example](getting-started.html) joins `flags` to `readmit` and
+compares readmission in people with and without diabetes.
 
 ```{r disconnect, include = FALSE}
 DBI::dbDisconnect(con)

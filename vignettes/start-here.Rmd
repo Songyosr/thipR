@@ -1,5 +1,7 @@
 ---
 title: "Start here: setup and connect"
+description: >
+  Install thipR, store your THIP database settings once and connect.
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Start here: setup and connect}
@@ -13,18 +15,17 @@ along before you have THIP access.
 
 | Guide | What you will learn |
 |---|---|
-| [Meet the THIP data](meet-the-data.html) | The yearly tables, what one row is, the main columns |
-| [Working with a database from R](database-from-r.html) | Where your code runs, and when data come into R |
-| [From question to cohort](question-to-cohort.html) | Turn a research question into one entry per person |
-| [Look back and follow up](look-back-follow-up.html) | Fetch each person's history and outcomes around their entry |
-| [Flag conditions](condition-flags.html) | Turn reviewed code lists into flags per person or entry |
-| [Worked example](getting-started.html) | The whole course in one short analysis |
-| [Check before you trust](data-checks.html) | Checks to run on the data before relying on it |
-| [Using THIP data responsibly](responsible-use.html) | What THIP's conditions and good practice ask of you |
+| [Meet the THIP data](https://songyosr.github.io/thipR/articles/meet-the-data.html) | The yearly tables, what one row is, the main columns |
+| [Working with a database from R](https://songyosr.github.io/thipR/articles/database-from-r.html) | Where your code runs, and when data come into R |
+| [From question to cohort](https://songyosr.github.io/thipR/articles/question-to-cohort.html) | Turn a research question into one entry per person |
+| [Look back and follow up](https://songyosr.github.io/thipR/articles/look-back-follow-up.html) | Fetch each person's history and outcomes around their entry |
+| [Flag conditions](https://songyosr.github.io/thipR/articles/condition-flags.html) | Turn reviewed code lists into flags per person or entry |
+| [Worked example](https://songyosr.github.io/thipR/articles/getting-started.html) | The whole course in one short analysis |
+| [Check before you trust](https://songyosr.github.io/thipR/articles/data-checks.html) | Checks to run on the data before relying on it |
+| [Using THIP data responsibly](https://songyosr.github.io/thipR/articles/responsible-use.html) | What THIP's conditions and good practice ask of you |
 
-The remote snippets below are not executed during package builds. Run them in
-your authorized THIP R session. Column-name arguments use strings such as
-`date = "adm"`; ordinary dplyr verbs handle general manipulation.
+The code on this page is shown, not run: setting up and connecting work only
+inside your THIP account, so run those steps there.
 
 ## Install or load thipR
 
@@ -115,11 +116,11 @@ thip_tables(con)
 thip_columns(con, "nhso2568")
 ```
 
-`thip_connect()` uses two DB threads by default. Row/time limits inherit the
-platform settings unless supplied explicitly; overflow raises an error, not
-silent truncation. The package does not impose an arbitrary collection cap.
-DB thread settings are separate from R's `data.table` thread settings. Metadata
-from an individual `_local` shard does not describe the entire distributed table.
+The connection can only read, and a query that passes the platform's limits on
+time or rows stops with an error rather than returning part of the result;
+[Working with a database from
+R](https://songyosr.github.io/thipR/articles/database-from-r.html) shows where
+your code runs and when data come into R.
 
 ## Finish a session
 
@@ -127,16 +128,5 @@ from an individual `_local` shard does not describe the entire distributed table
 DBI::dbDisconnect(con)
 ```
 
-## Supported API and compatibility
-
-New code should use `tables = ...` and `dplyr::collect()`. Singular
-`thip_table(table = ...)` and `thip_collect()` are deprecated compatibility
-interfaces. `thip_disconnect()` is also deprecated; use `DBI::dbDisconnect()`.
-No connection argument is needed for `thip_filter_icd()` or `thip_window()` when
-the source already carries it.
-
-The tested backend is ClickHouseHTTP **1.1.2**. Older versions are refused; a
-newer version warns once per session, or stops with a clear message if it
-changed the connection structure thipR relies on. Vignette builds do not certify a
-live backend: opt-in read-only smoke scripts in `inst/examples/` cover that path.
-Next: [Meet the THIP data](meet-the-data.html).
+Next: [Meet the THIP data](https://songyosr.github.io/thipR/articles/meet-the-data.html)
+starts the course.

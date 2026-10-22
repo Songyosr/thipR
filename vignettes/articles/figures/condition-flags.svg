@@ -47,7 +47,7 @@
   <path class="arrow" d="M 345 141 L 352 146 L 345 151"/>
   <rect class="box" x="354" y="100" width="170" height="92" rx="6"/>
   <text class="b" x="366" y="122">icd_flag()</text>
-  <text class="m" x="366" y="142">diabetes: E10–E14</text>
+  <text class="s" x="366" y="142">diabetes: E10 to E14</text>
   <text class="m" x="366" y="160">id = "entry_id"</text>
   <text class="m" x="366" y="178">match = "prefix"</text>
 

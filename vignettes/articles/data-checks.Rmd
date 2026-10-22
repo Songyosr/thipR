@@ -2,7 +2,7 @@
 title: "Check before you trust"
 description: >
   Checks to run on the tables before you rely on them: dates, months, keys,
-  recorded fields, code shapes and empty values.
+  length of stay, code shapes and empty values.
 ---
 
 ```{r setup, include = FALSE}
@@ -14,17 +14,17 @@ registerS3method("db_connection_describe", "duckdb_connection",
                  function(con, ...) "example database", envir = asNamespace("dbplyr"))
 ```
 
-Your code rests on assumptions about the data: that dates can be read, that
-each record appears once, that codes are written the way your comparisons
-expect. When one fails, the code does not stop: a filter on a date that could
-not be read drops the record, and a comparison with `"K35"` misses `"k358"`,
-without a message. A check turns silent failures like these into counts you
-can see.
+The [Worked example](getting-started.html) trusted its tables; on THIP, run
+these checks before you do. Your code rests on assumptions about the data: that
+dates can be read, that each record appears once, that codes are written the
+way your comparisons expect. When one fails, the code does not stop: a filter
+on a date that could not be read drops the record, and a comparison with
+`"K35"` misses `"k358"`, without a message. A check turns silent failures like
+these into counts you can see.
 
-This guide gathers the checks to run before you rely on the tables. Each
-section says what one check tests, gives the code, and says what to look for
-and what to do about it. The code runs on the database and brings back only
-summaries: counts, never records.
+Each section below says what one check tests, gives the code, and says what to
+look for and what to do about it. The code brings back only summaries: counts,
+never records.
 
 The example database is invented, with a few values damaged on purpose ([Meet
 the THIP data](meet-the-data.html)), so its results show how each check works,
@@ -52,9 +52,10 @@ admissions <- thip_table(
 ## Dates that cannot be read
 
 `thip_date_audit()` compares each converted date with its raw text and counts,
-for each table, the values that were missing, blank, read or failed; [From
-question to cohort](question-to-cohort.html#audit-the-dates-before-you-filter)
-explains each count. Audit both dates, table by table:
+for each table, the values that were missing, blank, parsed (read) or failed;
+[From question to
+cohort](question-to-cohort.html#audit-the-dates-before-you-filter) explains
+each count. Audit both dates, table by table:
 
 ```{r date-audit}
 date_audit <- thip_date_audit(
@@ -63,6 +64,7 @@ date_audit <- thip_date_audit(
 
 date_audit |>
   arrange(field, source_table) |>
+  select(-raw_column) |>
   knitr::kable()
 ```
 
@@ -74,23 +76,32 @@ did not become a date:
 ```{r date-failures}
 admissions |>
   filter(is.na(dsc)) |>
-  count(source_table, datedsc)
+  count(source_table, datedsc) |>
+  arrange(source_table, datedsc)
 ```
 
 The two failures read `20230229`, 29 February 2023, a day that did not exist.
-On your tables, **look for** failed or blank values in any date you will use,
-`n_inconsistent` above zero, and failures that gather in one table. Audit every
-other date you use, such as `death_date`, the same way. A date that was read can
-still be wrong: the check of `los` below also shows stays that end before they
-start.
+A date that was read can still be wrong. Count the stays that end before they
+start:
+
+```{r date-order}
+admissions |>
+  filter(dsc < adm) |>
+  count(name = "ends_before_start")
+```
+
+There are none in the example; the check of `los`, below, compares the dates
+further. On your tables, **look for** failed or blank values in any date you
+will use, `n_inconsistent` above zero, failures that gather in one table, and
+stays that end before they start. Audit every other date you use the same way,
+such as `death_date`, whose format is `"%Y-%m-%d"`; most death dates are blank,
+which is not a failure.
 
 **What to do.** thipR does not repair dates; you decide what a failure means for
 your study. If a step needs the date, as follow-up needs the discharge date, a
 record without it cannot take that step: leave it out and count it in your flow
-chart. If another column can supply the date, as `los` can below, write that
-rule into your protocol and count the records it changes. Many failures in one
-table or one month point to a problem in the data rather than in single
-records; raise it with the THIP team.
+chart. Many failures in one table or one month point to a problem in the data
+rather than in single records; raise it with the THIP team.
 
 ## Records per month and table
 
@@ -111,17 +122,15 @@ monthly |>
 ```
 
 In the example, each table holds the 12 months of its fiscal year, October to
-September, and starts the month after the one before it ends, so no two tables
-share a month. Every month has between `r min(monthly$records)` and
-`r max(monthly$records)` records. To see the months in order, plot one dot per
-table and month:
+September, so the tables meet with no gap and no shared month. Every month has
+between `r min(monthly$records)` and `r max(monthly$records)` records. To see
+the months in order, plot one dot per table and month:
 
 ```{r monthly-plot, fig.asp = 0.55, fig.alt = "Records per month of admission in the example, October 2021 to September 2024: one dot a month, in an even band with no gaps, jumps or doubled months."}
 monthly <- monthly |>
   mutate(first_day = as.Date(paste0(month, "01"), format = "%Y%m%d"))
 
 plot(records ~ first_day, data = monthly, ylim = c(0, max(monthly$records)),
-     pch = 19, col = "#486581", las = 1,
      xlab = "Month of admission", ylab = "Records")
 ```
 
@@ -140,7 +149,7 @@ tables share months, check the keys, next, before you count anything in them.
 
 Stacking keeps every row, so a record held by two tables, or twice by one,
 counts twice. Count the `tran_id` values that appear more than once, and the
-people with more than one record starting on the same day:
+person-days (one person, one admission date) with more than one record:
 
 ```{r keys}
 admissions |>
@@ -165,7 +174,7 @@ admissions. Decide how to count each kind, write the rule into your protocol and
 count the records it removes. Do not drop repeats with `distinct()` before you
 have looked.
 
-## A recorded field against its source
+## Length of stay against the dates
 
 Some columns record what you could also work out from others. `los`, the length
 of stay in days, should follow from the admission and discharge dates. Count the
@@ -196,16 +205,16 @@ R](database-from-r.html#the-example-is-duckdb-thip-is-clickhouse).
 **What to do.** Choose which value your study uses, and say why. Windows in this
 course are measured from dates, so the dates decide and `los` checks them. Where
 the two agree everywhere else, `los` could fill a failed discharge date, as
-`adm + los - 1`; that is a rule for your protocol, not a repair to make quietly.
-Where they disagree, look at examples before you choose: either column can be
-the wrong one.
+`adm + los - 1` where, as in the example, `los` counts both days; that is a rule
+for your protocol, not a repair to make quietly. Where they disagree, look at
+examples before you choose: either column can be the wrong one.
 
 ## The shape of codes
 
-`thip_fields` describes diagnosis codes as ICD-10 codes without a dot ([Meet
-the THIP data](meet-the-data.html#diagnoses-and-procedures)). To check that
-yours look that way, first count every code written in `pdx` and the 20
-secondary diagnosis columns:
+THIP's data dictionary describes the diagnosis columns as ICD-10 codes ([Meet
+the THIP data](meet-the-data.html#diagnoses-and-procedures)); to check how
+yours are written, first count every code in `pdx` and the 20 secondary
+diagnosis columns:
 
 ```{r codes}
 dx_cols <- c("pdx", paste0("sdx", 1:20))
@@ -244,11 +253,9 @@ principal diagnosis in lower case, and `E11.9`, a secondary diagnosis with a
 dot. On your tables, **look for** lengths you did not expect, lower-case
 letters, dots, and spaces, which add to the length.
 
-**What to do.** `thip_filter_icd()` and `icd_flag()` ignore case, dots and the
-spaces around each code before they compare, so they find both codes above.
-Your own code may not: `substr(pdx, 1, 3) == "K35"` misses `k358`, and a join to
-a table of code names misses both. Use thipR's matching, or clean the codes in
-R before you compare them, as in
+**What to do.** `thip_filter_icd()` and `icd_flag()` clean codes before they
+compare them ([Flag conditions](condition-flags.html#codes-are-cleaned-first));
+before your own comparisons, clean them the same way, as in
 `toupper(gsub(".", "", trimws(code), fixed = TRUE))`.
 
 ## Empty values and ages
@@ -306,13 +313,15 @@ unseen.
 
 Run these on the tables you will use, and keep what they find:
 
-- **Dates:** audit every date you use, by table, and read the raw text of the
-  failures.
+- **Dates:** audit every date you use, by table, read the raw text of the
+  failures, and count stays that end before they start.
 - **Months:** count records by table and month, and explain any gap, jump or
   overlap.
 - **Keys:** check that no `tran_id` repeats, and look at anyone with two records
   on one day.
-- **Recorded fields:** compare `los`, and columns like it, with the dates, and
+- **People across tables:** windows across tables assume `pid` means the same
+  person in every table you stack; confirm this for your tables.
+- **Length of stay:** compare `los`, and columns like it, with the dates, and
   choose which to use.
 - **Codes:** check the shape of the codes in every column you search, and clean
   them before your own comparisons.
@@ -321,7 +330,7 @@ Run these on the tables you will use, and keep what they find:
 - **Decisions:** write down what each check found and what you decided, with
   counts, for your methods.
 
-Next: [Using THIP data responsibly](responsible-use.html): what THIP's
+Next: [Using THIP data responsibly](responsible-use.html) sets out what THIP's
 conditions ask of you, and what you may take out of THIP.
 
 ```{r disconnect, include = FALSE}

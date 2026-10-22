@@ -2,10 +2,13 @@
 #'
 #' Uses normalized distinct codes and sparse aggregation. Dots are removed,
 #' case is normalized, and surrounding whitespace is trimmed. Prefixes are
-#' literal, not regular expressions. Range (`Q20-Q26`), wildcard (`%`, `_`, `?`),
-#' regex and comma/space-separated list notation is rejected with an error rather
-#' than silently matching nothing; supply explicit code vectors instead. `*`, `+`
-#' and `/` remain literal characters. Codes are not clinically validated.
+#' literal, not regular expressions. Range notation (`Q20-Q26`, also with an en
+#' dash), the wildcards `%`, `_` and `?`, other regular-expression symbols and
+#' comma/space-separated lists are rejected with an error rather than silently
+#' matching nothing; supply explicit code vectors instead. `*`, `+` and `/` remain
+#' literal characters, so `"E11*"` is the code `E11*` and matches nothing: use
+#' `"E11"` with `match = "prefix"` for E11 and its subcodes. Codes are not
+#' clinically validated.
 #' Repeated IDs are combined across rows and columns. Flags are TRUE for any
 #' match, FALSE for recorded codes without a match, and NA when all selected
 #' codes for an ID are missing/blank. FALSE does not establish disease absence.

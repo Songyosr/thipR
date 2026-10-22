@@ -22,18 +22,26 @@ small counts, credentials, and the decisions that belong to your protocol.
 
 ## What THIP's conditions say
 
-THIP publishes the conditions that come with registering as a user. In short:
+The conditions, in short:
 
-- THIP is a data warehouse for research.
-- Ownership of the data stays with the agency that owns them; using them
-  through THIP does not make them yours.
-- Use the system honestly, and only within your role.
-- Do not share your account or your password.
-- When you download data, attach your institution's research-ethics approval.
-- THIP may cancel access that is used outside its purpose or its conditions.
+- THIP is an information system for study and research: it opens health data,
+  as a data warehouse, to agencies involved in research in Thailand.
+- Ownership of the data stays with the agency that owns them. Data brought in
+  by research projects belong to the agency that funded or carried out the
+  research, and research data belong to the researcher's institution and the
+  researcher.
+- Use the system honestly and ethically, and only within your role.
+- Log in for the first time within two weeks of approval.
+- Do not share your account or your password with anyone.
+- When you want to download data, attach your institution's research-ethics
+  approval in full.
+- THIP may check the details you register with, and may cancel your membership
+  if they are wrong, or your access if you use it outside its purpose or its
+  conditions.
 
-This is a summary, so read the conditions in THIP's own words. The rest of this
-guide is about keeping to them while you work.
+You accept them when you register for a THIP account (the terms shown at
+sign-up); read them there, in THIP's own words. The rest of this guide is about
+keeping to them while you work.
 
 ## Keep records inside THIP
 
@@ -82,26 +90,30 @@ by_status <- tbl(con, "nhso2567") |>
 ```
 
 Set the threshold once, as a variable, and replace every count below it before
-the table leaves THIP:
+the table leaves THIP. The other counts become text too, so write them with
+`format()`, which keeps them in full (`as.character()` would turn 100000 into
+`1e+05`):
 
 ```{r suppress}
 min_count <- 10  # set this from your protocol
 
 by_status |>
   mutate(records = if_else(records < min_count, paste0("<", min_count),
-                           as.character(records)))
+                           format(records, scientific = FALSE, trim = TRUE)))
 ```
 
 The count for discharge status
 `r by_status$dischs[by_status$records < min_count]`, not delivered, was below
-`r min_count` and now reads `<10`.
+`r min_count` and now reads `r paste0("<", min_count)`.
 
 Hiding one cell is not always enough. If your report also gives the year's
 total, `r format(sum(by_status$records), big.mark = ",")` records, anyone can
 subtract the `r sum(by_status$records >= min_count)` counts shown and find the
 hidden one. Hide a second cell too, or leave the total out, as your protocol
-says; the same goes for a percentage of a known total. Apply the rule last, to
-the tables you will show: inside THIP, keep the full counts for your analysis.
+says; the same goes for a percentage of a known total. The summary in the
+[Worked example](getting-started.html) is a case in point: both of its
+readmitted counts are below 10. Apply the rule last, to the tables you will
+show: inside THIP, keep the full counts for your analysis.
 
 ## Credentials stay out of code
 
@@ -111,7 +123,8 @@ belong in one place: the settings file that `thip_setup()` writes. Run
 `thip_setup()` once in your THIP account, as [Start
 here](start-here.html#configure-once-connect-each-session) shows. It asks for
 the password in a masked box and saves the connection settings in a file only
-you can read; from then on, `thip_connect()` reads them from there.
+your account (and the server's administrators) can read; from then on,
+`thip_connect()` reads them from there.
 
 - Never type a password into a notebook cell or a script, even for a moment:
   notebooks keep their cells and output, and code gets copied.
@@ -139,22 +152,18 @@ thipR gives you tools, not study decisions. It does not choose:
   lists in this course illustrate the methods; they are not validated
   definitions.
 - **Eligibility:** who can enter the study, from which dates and at which ages.
-- **Duplicates and damaged values:** what to do with repeated records, dates
-  that cannot be read and impossible values ([Check before you
+- **Repeated records and damaged values:** what to do with records that appear
+  twice, dates that cannot be read and impossible values ([Check before you
   trust](data-checks.html)).
 
 These are your protocol's decisions. Make them before you look at results,
 write them down with the code lists you used and where they came from, and
 report them with your findings.
 
-## The example is not evidence
-
-The example database that comes with thipR is invented: its people, records and
-rates were made up to teach the methods ([Meet the THIP
-data](meet-the-data.html)). Never present its numbers, such as the readmission
-percentages in the [Worked example](getting-started.html), as findings about
-Thai hospitals or patients, and do not use them to plan a study. When you teach
-with it, say that the data are invented.
+The example's numbers, such as the readmission percentages in the [Worked
+example](getting-started.html), are invented ([Meet the THIP
+data](meet-the-data.html)): never present them as findings, and say so when you
+teach with them.
 
 ## Report problems
 
@@ -168,7 +177,7 @@ data, contact the THIP team.
 
 ## In short
 
-- THIP is a data warehouse for research. The data stay their owner's, your
+- You accept THIP's conditions at sign-up: the data stay their owners', your
   account is yours alone, downloads need your institution's ethics approval,
   and THIP may cancel access used outside its conditions.
 - Work inside THIP, and take out only what your protocol allows: usually
@@ -177,15 +186,15 @@ data, contact the THIP team.
   someone work them out.
 - Keep credentials in the file `thip_setup()` writes, never in code or
   notebooks.
-- thipR only reads. Clinical definitions, eligibility and duplicates are your
-  protocol's decisions.
+- thipR only reads. Clinical definitions, eligibility and repeated records are
+  your protocol's decisions.
 - The example's numbers are invented: never present them as findings.
 - Report thipR problems on GitHub, without credentials, addresses or results
   from real data.
 
-This is the last guide in the course. To go back to the start, see [Meet the
-THIP data](meet-the-data.html); to set up access on THIP, see [Start
-here](start-here.html).
+This is the last guide in the course.
+Next: [Start here](start-here.html) sets up thipR in your THIP account and
+connects it to the database.
 
 ```{r disconnect, include = FALSE}
 DBI::dbDisconnect(con)

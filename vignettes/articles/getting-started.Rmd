@@ -14,7 +14,7 @@ registerS3method("db_connection_describe", "duckdb_connection",
                  function(con, ...) "example database", envir = asNamespace("dbplyr"))
 ```
 
-This guide answers the course's question in one short script:
+This guide answers the running question in one short script:
 
 > Among people admitted with appendicitis, how many are readmitted within 30
 > days of discharge, and is that more common in people with diabetes?
@@ -42,7 +42,9 @@ guide behind any step:
 
 As in every guide, the code runs on the example database that comes with
 thipR. On THIP, connect with `thip_connect()` instead, after the one-time setup
-in [Start here](start-here.html), and the same code runs there.
+in [Start here](start-here.html), and the same code runs there, apart from the
+differences in [The example is DuckDB, THIP is
+ClickHouse](database-from-r.html#the-example-is-duckdb-thip-is-clickhouse).
 
 ## Connect, stack and audit
 
@@ -92,6 +94,8 @@ entries <- candidates |>
   arrange(pid, adm, tran_id) |>
   distinct(pid, .keep_all = TRUE) |>
   select(pid, entry_id = tran_id, adm_date = adm, dsc_date = dsc)
+
+c(entries = nrow(entries), people = n_distinct(entries$pid))
 ```
 
 That gives `r nrow(entries)` entries from `r n_distinct(entries$pid)` people,
@@ -114,6 +118,8 @@ readmit <- entries |>
   mutate(readmissions = coalesce(readmissions, 0L),
          readmitted = readmissions > 0)
 
+count(readmit, readmitted)
+
 # 7. Look-back: admissions in the 365 days before admission
 history <- admissions |>
   select(pid, tran_id, source_table, adm, dsc, pdx, num_range("sdx", 1:20)) |>
@@ -133,19 +139,22 @@ code starting with E10 to E14 in any diagnosis column (`match = "prefix"`):
 
 ```{r flags}
 # 8. Flag diabetes on each entry's own admission and in its history
-entry_records <- candidates |>
+entry_admissions <- candidates |>
   filter(tran_id %in% entries$entry_id) |>
-  mutate(entry_id = tran_id)
+  rename(entry_id = tran_id)
 
-flags <- bind_rows(entry_records, history) |>
+flags <- bind_rows(entry_admissions, history) |>
   icd_flag(conditions = list(diabetes = paste0("E", 10:14)), id = "entry_id",
            cols = c("pdx", paste0("sdx", 1:20)), match = "prefix") |>
   mutate(diabetes = coalesce(diabetes, FALSE))
+
+count(flags, diabetes)
 ```
 
 [Flag conditions](condition-flags.html) flags the two periods separately to show
-what looking back adds; one call over both gives the same answer, and
-`coalesce()` reads "no codes recorded" (`NA`) as no diabetes, as that guide does.
+what looking back adds, then checks that this one call gives the same answer;
+`coalesce()` reads `NA` (no codes recorded) as `FALSE` (no diabetes code
+recorded), as that guide does.
 
 Of the `r nrow(flags)` entries, `r sum(flags$diabetes)` have a diabetes code.
 The flag looks only at the entry admission and the year before it, never at
@@ -175,21 +184,33 @@ example, readmission is more common with diabetes:
 `r summary_table$percent[summary_table$diabetes]`% against
 `r summary_table$percent[!summary_table$diabetes]`% without.
 
-## What leaves R
+## What leaves THIP
 
-Write the summary table, the only thing you take out of R, to a file; here a
-temporary one:
+The summary table is the only thing you take out of THIP, and first it must
+pass your project's rule for small counts. With `min_count <- 10`, as in [Using
+THIP data responsibly](responsible-use.html#small-counts), both readmitted
+counts, `r summary_table$readmitted[1]` and `r summary_table$readmitted[2]`,
+would be hidden, and so would their percentages, which give the counts back.
+Hide them, then write the table to a file; here a temporary one:
 
 ```{r export}
+min_count <- 10  # set this from your protocol
+
+shared <- summary_table |>
+  mutate(percent = if_else(readmitted < min_count, NA_real_, percent),
+         readmitted = if_else(readmitted < min_count, paste0("<", min_count),
+                              as.character(readmitted)))
+
 summary_file <- tempfile(fileext = ".csv")
-write.csv(summary_table, summary_file, row.names = FALSE)
+write.csv(shared, summary_file, row.names = FALSE)
 writeLines(readLines(summary_file))
 ```
 
-The file holds counts and percentages for two groups, nothing about any one
-person. Everything else stays in your R session, which on THIP runs inside your
-THIP account: the records that came in at the three `collect()`s
-(`candidates`, `followup` and `history`) and the tables made from them.
+The file holds counts for two groups and nothing about any one person; the
+hidden percentages read `NA`. Everything else stays in your R session, which on
+THIP runs inside your THIP account: the records that came in at the three
+`collect()`s (`candidates`, `followup` and `history`) and the tables made from
+them.
 
 ## What a real study adds
 
@@ -210,7 +231,8 @@ script adds:
 - **Confidence intervals and adjustment:** an interval for each percentage, for
   example from `binom.test()`, and a model that adjusts for age and sex, such
   as logistic regression with `glm(..., family = binomial)`, after keeping
-  `age_y` and `sex` in step 5's `select()`.
+  `age_y` and `sex` in step 5's `select()` and converting `age_y` with
+  `as.integer()`.
 - **Readmissions counted once per entry:** the table counts entries readmitted
   at least once, not readmission records. To report how many readmissions there
   were, first check that no record came back twice for an entry, as in
@@ -221,20 +243,6 @@ script adds:
   year 2565 falls before the first table you stacked, so it was never searched
   ([Look back and follow up](look-back-follow-up.html#windows-and-the-years-you-stacked)
   gives two fixes).
-- **Your project's rule for small counts**, applied to every number in the
-  summary before it leaves THIP; see
-  [Using THIP data responsibly](responsible-use.html).
-
-## Back to the guides
-
-- [Meet the THIP data](meet-the-data.html): the yearly tables, what one row is,
-  and the columns used here.
-- [Working with a database from R](database-from-r.html): what runs on the
-  database, and what comes into R.
-- [From question to cohort](question-to-cohort.html): steps 2 to 5, with a
-  count of records and people after each.
-- [Look back and follow up](look-back-follow-up.html): steps 6 and 7.
-- [Flag conditions](condition-flags.html): step 8.
 
 Next: [Check before you trust](data-checks.html), the checks to run on the data
 before you rely on a result like this one.

@@ -21,8 +21,8 @@ person:
 
 - **Follow-up:** admissions for any cause in the 30 days after discharge, to
   find readmissions.
-- **Look-back:** admissions in the year before the entry admission, where the
-  next guide will look for diabetes.
+- **Look-back:** admissions in the year before the entry admission, where, with
+  the entry admission itself, the next guide looks for diabetes.
 
 Each person has their own dates, so each needs their own window. The picture
 shows three people. Their windows sit at different dates, and a record comes
@@ -43,13 +43,9 @@ instead.
 
 ## Rebuild the entries
 
-This chunk repeats the code of [From question to cohort](question-to-cohort.html)
-in one go. It stacks the three yearly tables with converted dates, collects the
-appendicitis records admitted in the study period (1 October 2021 to 31 August
-2024), and keeps each person's first appendicitis admission with a valid
-discharge date:
+This chunk repeats the recipe of [From question to cohort](question-to-cohort.html).
 
-```{r entries}
+```{r rebuild}
 library(thipR)
 library(dplyr, warn.conflicts = FALSE)
 
@@ -57,8 +53,8 @@ con <- thip_connect_example()
 
 admissions <- thip_table(
   con, tables = c("nhso2565", "nhso2566", "nhso2567"), .id = "source_table",
-  dates = c(adm = "dateadm", dsc = "datedsc", death = "death_date"),
-  date_format = c(adm = "%Y%m%d", dsc = "%Y%m%d", death = "%Y-%m-%d")
+  dates = c(adm = "dateadm", dsc = "datedsc"),
+  date_format = c(adm = "%Y%m%d", dsc = "%Y%m%d")
 )
 
 candidates <- admissions |>
@@ -71,8 +67,6 @@ entries <- candidates |>
   arrange(pid, adm, tran_id) |>
   distinct(pid, .keep_all = TRUE) |>
   select(pid, entry_id = tran_id, adm_date = adm, dsc_date = dsc)
-
-entries
 ```
 
 There are `r nrow(entries)` entries, one per person. `adm_date` and `dsc_date`
@@ -80,10 +74,10 @@ are `Date` values, which the windows below need.
 
 ## The round trip
 
-`entries` is in R; the records are on the database. You cannot join the two the
-usual way: thipR only reads from the database and never writes a table there,
-and collecting whole yearly tables to join in R would be far too large. So
-getting each person's records around their entry is a round trip:
+`entries` is in R and the records are on the database, so you cannot join the
+two the usual way ([Working with a database from
+R](database-from-r.html#join-tables-on-the-same-connection)). Getting each
+person's records around their entry is a round trip:
 
 1. `thip_window()` takes `entries` and makes a plan: for each entry, its `pid`
    and the first and last day of its window. Nothing is read yet.
@@ -93,15 +87,13 @@ getting each person's records around their entry is a round trip:
 3. Those records come back to R as an ordinary data frame, with one extra
    column, `entry_id`, saying which entry each record belongs to.
 
-The people and their dates travel inside the query itself, so nothing is
-written to the database, and only the matching records are brought into R.
-
 ## A window is two day offsets
 
-A window is set by a date on the entry, the **index**, and two whole numbers of
-days counted from it, smallest first (the `L` marks a whole number in R;
-`c(1, 31)` works too). Negative offsets count back before the index. For
-readmission, the index is the discharge date:
+A window is set by a date on the entry, the index date (see [From question to
+cohort](question-to-cohort.html)), and two whole numbers of days counted from
+it, smallest first (the `L` marks a whole number in R; `c(1, 31)` works too).
+Negative offsets count back before the index date. For readmission, the index
+date is the discharge date:
 
 - `window = c(1L, 31L)` sets the edges: day 1 and day 31 after discharge.
 - `bounds = "[)"`, the default, says which edges count. `[` includes its edge
@@ -124,172 +116,14 @@ The other three bounds move the edges:
 Offsets count days, not calendar months or years: `c(1L, 31L)` is always the
 same 30 days, whatever the month.
 
-Try other windows in the explorer below: set the edges to −365 and 0 for the
+Try other windows in the explorer below: set the edges to `-365` and `0` for the
 year before the index date, or switch the bounds and watch days 1 and 31.
 
-```{=html}
-<div class="wx" id="window-explorer">
-<p class="wx-nojs">The window explorer needs JavaScript; the table above shows what each bound includes.</p>
-<div class="wx-app" role="group" aria-labelledby="wx-title" hidden>
-<p class="wx-title" id="wx-title">Window explorer</p>
-<p class="wx-hint" id="wx-hint">Edges are whole days from the index date (day 0), smallest first.</p>
-<div class="wx-controls">
-<label for="wx-start">Window start <input id="wx-start" type="number" step="1" value="1" autocomplete="off" aria-describedby="wx-hint"></label>
-<label for="wx-end">Window end <input id="wx-end" type="number" step="1" value="31" autocomplete="off" aria-describedby="wx-hint"></label>
-<div class="wx-bounds" role="radiogroup" aria-labelledby="wx-bounds-label">
-<span id="wx-bounds-label">Bounds</span>
-<label><input type="radio" name="wx-bounds" value="[)" autocomplete="off" checked><code>[)</code><span class="wx-sr">, includes the start, excludes the end</span></label>
-<label><input type="radio" name="wx-bounds" value="[]" autocomplete="off"><code>[]</code><span class="wx-sr">, includes both</span></label>
-<label><input type="radio" name="wx-bounds" value="(]" autocomplete="off"><code>(]</code><span class="wx-sr">, excludes the start, includes the end</span></label>
-<label><input type="radio" name="wx-bounds" value="()" autocomplete="off"><code>()</code><span class="wx-sr">, excludes both</span></label>
-</div>
-</div>
-<div class="wx-track" aria-hidden="true"><div class="wx-axis"></div></div>
-<p class="wx-out" aria-live="polite" aria-atomic="true"><span id="wx-days"></span> <span id="wx-list"></span></p>
-<p class="wx-code">In R: <code></code> <code></code></p>
-<p class="wx-note">Filled dots are example record days inside the window. They are evenly spaced, not to scale.</p>
-</div>
-</div>
-<style>
-.wx { margin: 0.5rem 0 1.5rem; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #1f2933; }
-.wx [hidden] { display: none !important; }
-.wx p { margin: 0; }
-.wx code { font: 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: #1f2933; background: #eef2f6; padding: 1px 4px; border-radius: 4px; white-space: nowrap; }
-.wx-nojs, .wx-hint, .wx-note { font-size: 13px; color: #52606d; }
-.wx-app { background: #f5f7fa; border: 1px solid #9aa5b1; border-radius: 10px; padding: 14px 16px; }
-.wx-title { font-size: 14px; font-weight: 600; }
-.wx-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 24px; margin: 10px 0 12px; font-size: 14px; }
-.wx label { margin: 0; font-weight: 400; white-space: nowrap; }
-.wx input[type=number] { width: 5.5em; margin: 0 0 0 6px; padding: 3px 6px; font: 14px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: #1f2933; background: #fff; border: 1px solid #9aa5b1; border-radius: 6px; }
-.wx input[type=radio] { margin: 0 4px 0 12px; accent-color: #486581; vertical-align: middle; }
-.wx-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.wx-track { background: #fff; border: 1px solid #9aa5b1; border-radius: 6px; padding: 8px 18px 4px; }
-.wx-axis { position: relative; height: 86px; }
-.wx-line { position: absolute; left: -10px; right: -10px; top: 58px; border-top: 1.5px solid #9aa5b1; }
-.wx-band { position: absolute; top: 18px; height: 26px; background: #fdf3e1; box-shadow: inset 0 0 0 1px rgba(72, 101, 129, 0.3); }
-.wx-band.wx-before { background: #e3f0ff; }
-.wx-band.wx-both { background: #eef2f6; }
-.wx-br { position: absolute; top: 18px; font: 600 22px/26px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: #1f2933; }
-.wx-brl { transform: translateX(-85%); }
-.wx-brr { transform: translateX(-15%); }
-.wx-zero, .wx-guide { position: absolute; margin-left: -0.5px; }
-.wx-zero { top: 15px; height: 44px; border-left: 1px solid #486581; }
-.wx-guide { top: 44px; height: 15px; border-left: 1px dashed #7b8794; }
-.wx-dot { position: absolute; top: 59px; width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px; box-sizing: border-box; border-radius: 50%; background: #fff; border: 1.5px solid #7b8794; }
-.wx-dot.wx-in { background: #1f2933; border-color: #1f2933; }
-.wx-lab, .wx-idx { position: absolute; top: 68px; transform: translateX(-50%); font-size: 12px; line-height: 16px; color: #52606d; white-space: nowrap; }
-.wx-lab.wx-in { color: #1f2933; font-weight: 600; }
-.wx-idx { top: 0; line-height: 14px; font-weight: 600; color: #486581; }
-.wx .wx-out { margin: 12px 0 6px; font-size: 15px; }
-@media (max-width: 480px) {
-  .wx-app { padding: 12px; }
-  .wx-track { padding: 8px 12px 4px; }
-  .wx-axis { height: 102px; }
-  .wx-lab.wx-odd { top: 84px; }
-}
-</style>
-<script>
-(function () {
-  var root = document.getElementById("window-explorer");
-  if (!root || !root.querySelector || !window.addEventListener) return;
-  var days = [-400, -365, -30, -1, 0, 1, 15, 30, 31, 45], n = days.length, pad = 365;
-  var axis = root.querySelector(".wx-axis");
-  var start = document.getElementById("wx-start"), end = document.getElementById("wx-end");
-  var radios = root.querySelectorAll("input[name=wx-bounds]");
-  var said = document.getElementById("wx-days"), listed = document.getElementById("wx-list");
-  var codeLine = root.querySelector(".wx-code"), code = codeLine.querySelectorAll("code");
-
-  function add(cls, text, left) {
-    var e = document.createElement("div");
-    e.className = cls;
-    if (text) e.textContent = text;
-    if (left !== undefined) e.style.left = left + "%";
-    axis.appendChild(e);
-    return e;
-  }
-  function at(i) { return (i + 0.5) * 100 / n; }
-  function fmt(d) {
-    var s = String(Math.abs(d)).replace(/\B(?=(\d{3})+$)/g, ",");
-    return d < 0 ? "\u2212" + s : s;
-  }
-  function words(xs) {
-    var f = xs.map(fmt), last = f.pop();
-    return f.length ? f.join(", ") + " and\u00a0" + last : last;
-  }
-  // Example days sit evenly spaced; edges between them are placed in proportion,
-  // and edges up to a year beyond either end run into the margin.
-  function pos(v) {
-    var z = n - 1, i = 0;
-    if (v < days[0]) return days[0] - v > pad ? null : at(0) * (1 - (days[0] - v) / pad);
-    if (v > days[z]) return v - days[z] > pad ? null : at(z) + (100 - at(z)) * (v - days[z]) / pad;
-    while (v > days[i + 1]) i++;
-    return at(i) + (at(i + 1) - at(i)) * (v - days[i]) / (days[i + 1] - days[i]);
-  }
-  function whole(x) {
-    var t = String(x).replace(/^\s+|\s+$/g, ""), v = t === "" ? NaN : Number(t);
-    return isFinite(v) && Math.floor(v) === v && Math.abs(v) <= 99999 ? v : null;
-  }
-  function show(e, on) { e.style.display = on ? "" : "none"; }
-
-  var zero = at(days.indexOf(0));
-  add("wx-line");
-  var band = add("wx-band");
-  add("wx-zero", "", zero);
-  add("wx-idx", "index date", zero);
-  var gs = add("wx-guide"), ge = add("wx-guide");
-  var bs = add("wx-br wx-brl"), be = add("wx-br wx-brr"), dots = [], labs = [];
-  for (var i = 0; i < n; i++) {
-    dots.push(add("wx-dot", "", at(i)));
-    labs.push(add("wx-lab", fmt(days[i]), at(i)));
-  }
-
-  function update() {
-    var b = "[)", s = whole(start.value), e = whole(end.value), inside = [];
-    for (var j = 0; j < radios.length; j++) if (radios[j].checked) b = radios[j].value;
-    var typed = s !== null && e !== null, ok = typed && s <= e;
-    var lo = ok ? s + (b.charAt(0) === "(" ? 1 : 0) : 0;
-    var hi = ok ? e - (b.charAt(1) === ")" ? 1 : 0) : -1;
-    show(codeLine, typed);
-    if (typed) {
-      code[0].textContent = "window = c(" + s + "L, " + e + "L),";
-      code[1].textContent = "bounds = \"" + b + "\"";
-    }
-    if (!typed) said.textContent = "Enter whole numbers of days for the start and end.";
-    else if (s > e) said.textContent = "thip_window() stops with an error here: give the smaller offset first.";
-    else if (lo > hi) said.textContent = "No day is inside: this window is empty, so no record comes back.";
-    else if (lo === hi) said.textContent = "Only day " + fmt(lo) + " is inside.";
-    else said.textContent = "Days " + fmt(lo) + " to " + fmt(hi) + " are inside (" + fmt(hi - lo + 1) + " days).";
-    for (var k = 0; k < n; k++) {
-      var yes = days[k] >= lo && days[k] <= hi;
-      dots[k].className = yes ? "wx-dot wx-in" : "wx-dot";
-      labs[k].className = "wx-lab" + (k % 2 ? " wx-odd" : "") + (yes ? " wx-in" : "");
-      if (yes) inside.push(days[k]);
-    }
-    listed.textContent = !ok ? "" : inside.length ?
-      "Example days inside: " + words(inside) + "." : "None of the example days is inside.";
-    var a = ok ? pos(s) : null, z = ok ? pos(e) : null;
-    show(band, ok); show(bs, a !== null); show(gs, a !== null); show(be, z !== null); show(ge, z !== null);
-    if (!ok) return;
-    if (a === null) a = s < days[0] ? 0 : 100;
-    if (z === null) z = e < days[0] ? 0 : 100;
-    band.className = "wx-band" + (e <= 0 ? " wx-before" : s >= 0 ? "" : " wx-both");
-    band.style.left = a + "%";
-    band.style.width = (z - a) + "%";
-    bs.style.left = gs.style.left = a + "%";
-    be.style.left = ge.style.left = z + "%";
-    bs.textContent = b.charAt(0);
-    be.textContent = b.charAt(1);
-  }
-
-  start.addEventListener("input", update);
-  end.addEventListener("input", update);
-  for (var r = 0; r < radios.length; r++) radios[r].addEventListener("change", update);
-  window.addEventListener("pageshow", update);
-  update();
-  root.querySelector(".wx-nojs").hidden = true;
-  root.querySelector(".wx-app").hidden = false;
-})();
-</script>
+```{r window-explorer, echo = FALSE, results = "asis"}
+# Inline, so the explorer travels with the page. file.path() keeps pkgdown from
+# also copying the .html file to the site as a page of its own.
+cat("```{=html}", readLines(file.path("figures", "window-explorer.html")), "```",
+    sep = "\n")
 ```
 
 ## Plan the follow-up
@@ -313,25 +147,13 @@ means the records you search (`admissions`) and *cohort* means `entries`. Do any
 `select()` and `filter()` before `thip_window()`, as here; the plan is not a
 table you can add more dplyr steps to.
 
-Two arguments keep their defaults:
-
-- `by = "pid"` names the person column. Here records and entries share the name;
-  if your entries call it something else, map record column to entry column, as
-  in `by = c(pid = "person")`. Both columns must hold the same kind of value:
-  here, text.
-- `entry = "entry_id"` names the column that identifies each entry. It must be
-  unique, one value per row of `entries`, and must not also be a column of the
-  records.
-
-Both dates must be `Date` values, not text or date-times, which is why the plan
-uses `adm` and `dsc_date`, not the text column `dateadm`. On the database, a
-record date of the wrong type is caught when you `collect()`. Missing or blank
-values in `entries` (person, entry, index, or start and end dates) stop
-`thip_window()` with an error, one reason `entries` keeps only admissions with a
-valid discharge date. A record with a missing `pid` or `adm` is never inside any
-window, so check the date conversion before you rely on the result, as in
-[From question to cohort](question-to-cohort.html). `thip_window()` also works
-on a local data frame of records, with the same rules.
+Two arguments keep their defaults: `by = "pid"` names the person column, and
+`entry = "entry_id"` the column that identifies each entry, one value per row.
+Both dates must be `Date` values, not text, which is why the plan uses `adm`,
+not `dateadm`. A missing value in `entries` stops `thip_window()` with an error,
+one reason `entries` keeps only admissions with a discharge date; a record whose
+date is missing, such as one that failed to convert, is never inside any window.
+The [reference page](../reference/thip_window.html) has the details.
 
 ## Collect the follow-up
 
@@ -366,9 +188,8 @@ the entry admission itself.
 
 `followup` has rows only for entries that were readmitted. Person B in the
 picture at the top was not: it is in `entries` but has no rows in `followup`.
-Each row will count as one readmission, so first check that no record came back
-twice for the same entry; a record repeated in the source would count as two
-readmissions:
+Each row will count as one readmission, so first check for repeated records, the
+same record twice for one entry, which would count twice:
 
 ```{r repeats}
 followup |>
@@ -377,10 +198,9 @@ followup |>
   nrow()
 ```
 
-None did. If yours do, look at the repeated records and decide whether they are
-the same admission before you count;
-`distinct(entry_id, tran_id, .keep_all = TRUE)` keeps the first row of each,
-with all its columns.
+There are none. If you find some, decide whether they are the same admission
+before you count; `distinct(entry_id, tran_id, .keep_all = TRUE)` keeps the
+first row of each, with all its columns.
 
 To count every entry, including those with no readmission, start from `entries`
 and join the counts onto it:
@@ -406,16 +226,14 @@ readmission, and every entry left looks readmitted.
 
 ## Look back a year
 
-The same function fetches the look-back records. Now the index is the admission
-date, and the window ends at it:
+The same function fetches the look-back records. Now the index date is the
+admission date, and the window ends at it:
 
 ```{r history}
 history <- admissions |>
   select(pid, tran_id, source_table, adm, dsc, pdx, num_range("sdx", 1:20)) |>
   thip_window(entries, date = "adm", index = "adm_date", window = c(-365L, 0L)) |>
   collect()
-
-ncol(history)
 ```
 
 With `"[)"`, the window holds days −365 to −1: the 365 days before the entry
@@ -424,33 +242,18 @@ diagnoses are already in `candidates`. `history` keeps the principal diagnosis
 and all 20 secondary diagnosis columns, which the next guide searches, plus
 `entry_id`.
 
-For a first look, count the history records of each entry, again starting from
-`entries` so that entries with none are counted:
-
-```{r history-count}
-history_count <- entries |>
-  left_join(count(history, entry_id, name = "history_records"), by = "entry_id") |>
-  mutate(history_records = coalesce(history_records, 0L))
-
-count(history_count, history_records, name = "entries")
-```
-
-Most entries have no admission found in the year before, in the tables you
-stacked. No history records means none was found. That is not the same as
-having no diabetes, and, as the next section shows, it does not always mean
-that a whole year was searched. The split matches the readmission count by
-chance: only
-`r length(intersect(history$entry_id, followup$entry_id))` entry has both
-history and a readmission.
+`history` holds `r nrow(history)` records, for
+`r n_distinct(history$entry_id)` of the `r nrow(entries)` entries; for the
+others no admission was found in the year before, which is not the same as
+having no diabetes and, as the next section shows, does not always mean that a
+whole year was searched.
 
 ## Windows and the years you stacked
 
-A window does not stop at the end of a fiscal year: `admissions` stacks all
-three yearly tables, so each window searches them all. It does stop at the edge
-of what you stacked. Set those edges from the data, as in the span check in
-[From question to cohort](question-to-cohort.html): the first and last
-admission dates in the stack. On THIP, take them from that check for the tables
-you stacked, not from the tables' fiscal-year names:
+A window searches every table stacked in `admissions`, across fiscal years, but
+nothing outside them. To check that the windows fit, take the first and last
+admission dates in the stack from the data, not from the tables' names, and
+count the windows that run past them:
 
 ```{r coverage}
 span <- admissions |>
@@ -458,86 +261,69 @@ span <- admissions |>
   collect()
 span
 
-data_start <- span$first
-data_end <- span$last
-
-entries |>
-  summarise(lookback_starts_early = sum(adm_date - 365L < data_start),
-            followup_ends_late = sum(dsc_date + 30L > data_end))
+coverage <- entries |>
+  summarise(lookback_starts_early = sum(adm_date - 365L < span$first),
+            followup_ends_late = sum(dsc_date + 30L > span$last))
+coverage
 ```
 
-In the example, admissions run from 1 October 2021 to 30 September 2024. For
-`r sum(entries$adm_date - 365L < data_start)` entries the look-back starts
-before the first admission date in the stack, so part of their year was never
-searched: finding no history there can mean the records are in a table you did
-not stack.
+No follow-up window runs past the last admission date: the study period stops a
+month before the data end to leave room for follow-up. The look-back has no
+such room at the start: for the `r coverage$lookback_starts_early` entries
+admitted in fiscal year 2565, part of the year before lies before the first
+stacked table, so finding no history there can mean the records are in a table
+you did not stack.
 
-This is the look-back side of the room you left for follow-up in
-[From question to cohort](question-to-cohort.html), where the study period stops
-a month before the data end. There are two fixes. Stack the year before as well
-(on THIP, add the previous year's table to `tables` and run the span check
-again); the study period, and so `entries`, stay the same. Or start the study
-period a year after the data begin, on 1 October 2022 in the example. The
+There are two fixes. Stack the previous year's table as well (on THIP, add it
+to `tables` and run this check again), keeping the study period as it is; or
+start the study period a year after the data begin, on 1 October 2022 here. The
 example has no earlier table, so this course keeps all `r nrow(entries)`
 entries, and the next guide reads a missing diabetes code as "not recorded in
-the stacked years". The follow-up needs no fix: in the example, no follow-up
-window runs past the last admission date in the stack.
+the stacked years".
 
 ## Explicit start and end dates
 
 Instead of `index` and `window`, you can give each entry its own first and last
-day, as two `Date` columns, with `start` and `end`. This is the same follow-up
-window written as dates, with `"[]"` so that both days count:
+day as two `Date` columns, named with `start` and `end`; here is the same
+follow-up written as dates, with `"[]"` so that both days count:
 
 ```{r explicit}
-followup_dates <- entries |>
-  mutate(fu_start = dsc_date + 1L, fu_end = dsc_date + 30L)
-
 followup_again <- admissions |>
   select(pid, tran_id, source_table, adm, dsc, pdx) |>
-  thip_window(followup_dates, date = "adm", start = "fu_start", end = "fu_end",
-              bounds = "[]") |>
+  thip_window(
+    mutate(entries, fu_start = dsc_date + 1L, fu_end = dsc_date + 30L),
+    date = "adm", start = "fu_start", end = "fu_end", bounds = "[]"
+  ) |>
   collect()
 
-nrow(followup_again)
 setequal(followup_again$tran_id, followup$tran_id)
 ```
 
-The same records come back. Explicit dates are useful when a window is not a
-fixed number of days from one date: from discharge to the end of the study, for
-example, or to a date that differs from person to person. Give either `start`
-and `end`, or `index` and `window`, not both.
+The same records come back; dates suit a window that is not a fixed number of
+days from one date, such as from discharge to the end of the study.
 
 ## Batches and the window report
 
-`collect()` sends people to the database in batches. `batch_size` is the most
-people in one batch, 1,000 by default. It is not a limit on rows: all of one
-person's windows go in the same batch, and every matching record comes back.
-Smaller batches mean more, shorter queries and the same result:
+`collect()` sends people to the database in batches of at most `batch_size`
+people, 1,000 by default. All of one person's windows go in the same batch and
+every matching record comes back, so smaller batches mean more, shorter queries
+and the same result. Every collected result carries a report of its run:
 
 ```{r batches}
 followup_small <- collect(followup_plan, batch_size = 100L)
-nrow(followup_small)
-setequal(paste(followup_small$entry_id, followup_small$tran_id),
-         paste(followup$entry_id, followup$tran_id))
-
 attr(followup_small, "window_report")
 ```
 
-Here `r nrow(attr(followup_small, "window_report")$batches)` batches return the
-same `r nrow(followup_small)` records, for the same entries, as one batch did.
-
-Every collected result carries this report. `matched_entries` and
-`unmatched_entries` count the entries with and without records: here the
-`r sum(readmit$readmitted)` readmitted entries and the
-`r sum(!readmit$readmitted)` others. `batches` shows each batch's people,
-entries and matching records. `complete` is always `TRUE` on a result you get
-back, because a failed batch stops with an error instead of returning part of
-the result.
-
-If a batch's query grows too large, `collect()` stops and asks for a smaller
-`batch_size`. Batches keep queries short, but every returned record still ends
-up in R's memory, so select the columns you need before you plan.
+Here `r nrow(attr(followup_small, "window_report")$batches)` batches bring back
+the same `r nrow(followup_small)` records as one batch. `matched_entries` and
+`unmatched_entries` count the entries with and without records, here the
+`r sum(readmit$readmitted)` readmitted and the `r sum(!readmit$readmitted)`
+others, and `batches` shows each batch's people, entries and matching records.
+`complete` is always `TRUE` on a result you get back, because a failed batch
+stops with an error instead of returning part of the result. If a batch's query
+grows too large, `collect()` stops and asks for a smaller `batch_size`; every
+returned record still ends up in R's memory, so select the columns you need
+before you plan.
 
 ## Several entries per person
 
@@ -552,24 +338,23 @@ instead, keep one of each with `distinct(pid, tran_id)`.
 - `thip_window()` plans a round trip: each entry's person and window go to the
   database, and `collect()` brings back only the records inside, labelled with
   `entry_id`.
-- A window is an index date and two day offsets. `"[)"` includes the first
-  offset and excludes the second, so `c(1L, 31L)` from discharge is days 1 to
-  30.
-- `c(-365L, 0L)` from the admission date is the year before admission, without
-  the entry admission.
-- A window searches only the tables you stacked: set the edges from the data
-  and check that windows fit inside them.
+- A window is an index date and two day offsets, or two dates with `start` and
+  `end`. With the default bounds, `"[)"`, `c(1L, 31L)` from discharge is days 1
+  to 30, and `c(-365L, 0L)` from admission is the year before it, without the
+  entry admission.
+- A window searches only the tables you stacked: check that every window fits
+  inside them.
 - Entries with no records are not in the result: start from `entries` and
   left-join.
-- `thip_window()` keeps every match, so check for records repeated within an
+- `thip_window()` keeps every match, so check for repeated records within an
   entry before you count.
-- `start` and `end` give each window as two dates instead.
 - `batch_size` counts people, not rows, and does not change the result;
   `attr(x, "window_report")` summarises the run.
 
 Next: [Flag conditions](condition-flags.html) searches `history`, and the entry
-admissions in `candidates`, for diabetes; the [worked example](getting-started.html)
-then compares `readmit` between people with and without it.
+admissions in `candidates`, for diabetes; then [Worked
+example](getting-started.html) compares `readmit` between people with and
+without it.
 
 ```{r disconnect, include = FALSE}
 DBI::dbDisconnect(con)

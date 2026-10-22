@@ -125,7 +125,8 @@ test_that("unsupported range, wildcard and list notation errors before matching"
   expect_error(icd_flag(x, list(cardiac = "Q20-Q26"), "id", "dx", "prefix"),
                "Unsupported ICD notation \\(cardiac: Q20-Q26\\)")
   for (code in c("E11%", "E1_", "E11?", "^E11", "E11$", "E1[01]", "E10|E11",
-                 "E10,E11", "E10 E11", "E1(0)", "E10;E11"))
+                 "E10,E11", "E10 E11", "E1(0)", "E10;E11", "E10\u2013E14",
+                 "E10\u2014E14", "Q20\u2212Q26", "E11\u00a0", "E11\uff0e9"))
     expect_error(icd_flag(x, list(flag = code), "id", "dx", "prefix"),
                  "Unsupported ICD notation", info = code)
   expect_error(icd_flag(x, list(ok = "Q20", bad = c("Q27", "Q20-Q26")), "id", "dx"),
@@ -143,4 +144,7 @@ test_that("the notation guard keeps supported code formats unchanged", {
   expect_identical(out$proc, c(FALSE, FALSE, FALSE, TRUE, FALSE))
   expect_identical(out$covid, c(FALSE, FALSE, FALSE, FALSE, TRUE))
   expect_false(any(out$empty))
+  # `*` is literal: "E11*" is a code, not "E11 and everything beneath it".
+  expect_identical(icd_flag(x, list(star = "E11*"), "id", "dx", "prefix")$star,
+                   rep(FALSE, 5))
 })

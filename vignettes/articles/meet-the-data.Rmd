@@ -28,9 +28,12 @@ cat("```{=html}", "<div style=\"margin: 0.5rem 0 1.5rem;\">",
 ```
 
 Every example runs on the example database: a small set of invented records in
-tables shaped like THIP's, with the same column names and text formats. On THIP,
-set up once as in [Start here](start-here.html), connect with `thip_connect()`
-instead, and the same code works.
+tables shaped like THIP's, with the same column names and text formats. The
+records include a few values damaged on purpose, which later guides find. On
+THIP, set up once as in [Start here](start-here.html), connect with
+`thip_connect()` instead, and the same code works, apart from the differences in
+[The example is DuckDB, THIP is
+ClickHouse](database-from-r.html#the-example-is-duckdb-thip-is-clickhouse).
 
 ```{r connect}
 library(thipR)
@@ -183,9 +186,11 @@ follow from this:
   `filter(as.integer(age_y) >= 65)`.
 - **Codes:** keep them as text and compare with quotes, keeping leading zeros:
   `sex == "2"`, `health_region == "01"`.
-- **Empty values** are empty text, `""`, not `NA`. Test for them with `== ""` or
-  `!= ""`. When a column holds an empty value, the printout puts quotes around
-  every value in that column, as in the `sdx1` column above.
+- **Empty values** are usually empty text, `""`, rather than `NA`. Test for them
+  with `== ""` or `!= ""`; [Check before you
+  trust](data-checks.html#empty-values-and-ages) shows how to count both. When a
+  column holds an empty value, the printout puts quotes around every value in
+  that column, as in the `sdx1` column above.
 
 Dates are text too, in two styles: `dateadm` and `datedsc` look like
 `"20231015"`, while `death_date` looks like `"2023-10-15"`. Convert them before
@@ -215,9 +220,9 @@ To see every field, print `thip_fields` or open it with `View(thip_fields)`; the
 Each record has one principal diagnosis, `pdx`: the main reason for the stay.
 Up to 20 secondary diagnoses follow in `sdx1` to `sdx20`, such as long-term
 conditions present at the time. THIP's dictionary lists these as ICD-10; Thai
-hospitals code with ICD-10-TM, the Thai modification of ICD-10. Codes are written
-without the dot: `J189` is J18.9. Procedures, in `proc1` to `proc21`, use
-ICD-9-CM.
+hospitals code with ICD-10-TM, the Thai modification of ICD-10. The example
+writes codes without the dot: `J189` is J18.9. Procedures, in `proc1` to
+`proc21`, use ICD-9-CM.
 
 The most common principal diagnoses in the example:
 
@@ -227,9 +232,12 @@ stays |>
   head(8)
 ```
 
-Codes have three to five characters and no dot. Secondary diagnoses spread
-across many columns; the notebook platform also gives `sdx_index`, which joins
-the non-empty ones into one text:
+In the example, codes have three to five characters and no dot; [Check before
+you trust](data-checks.html#the-shape-of-codes) shows how to find any that do
+not.
+
+Secondary diagnoses spread across many columns; the notebook platform also gives
+`sdx_index`, which joins the non-empty ones into one text:
 
 ```{r sdx}
 stays |>
@@ -284,7 +292,7 @@ populations, see [THIP Commons](https://songyosr.github.io/thip-commons/).
   same person.
 - Every column is text: convert numbers and dates, compare codes as text, and
   test empty values with `""`.
-- Diagnoses are ICD-10 codes without the dot, in `pdx` and `sdx1` to `sdx20`.
+- Diagnoses are ICD-10 codes, in `pdx` and `sdx1` to `sdx20`.
 - `thip_fields` describes each column and what its codes mean.
 
 Next: [Working with a database from R](database-from-r.html). To run the code on

@@ -39,8 +39,11 @@
 
 # Codes are literal. Range, regex, SQL-wildcard and list notation would otherwise
 # match nothing and return a plausible all-FALSE result. `*`, `+` and `/` stay
-# literal (dagger/asterisk and similar source notations).
-.icd_unsupported_notation <- "[\\-%_?^$|\\\\()\\[\\]{},;\\s]"  # PCRE
+# literal (dagger/asterisk and similar source notations). Unicode dashes and
+# spaces are rejected too: ranges copied from documents often use an en dash.
+.icd_unsupported_notation <- paste0(
+  "[\\-%_?^$|\\\\()\\[\\]{},;\\s",
+  "\u00a0\u2010-\u2015\u2212\u202f\u3000\ufe58\ufe63\uff0d\uff0e]")  # PCRE
 
 .icd_check_notation <- function(definitions) {
   bad <- lapply(definitions, function(x) x[grepl(.icd_unsupported_notation, x, perl = TRUE)])
@@ -49,9 +52,10 @@
   shown <- paste0(names(bad), ": ", vapply(bad, function(x)
     paste(utils::head(unique(x), 3L), collapse = ", "), character(1)), collapse = "; ")
   stop("Unsupported ICD notation (", shown, "). Codes are matched literally; ",
-       "ranges, wildcards, regular expressions and comma/space-separated lists are ",
-       "not expanded. Supply an explicit reviewed vector, e.g. paste0(\"Q\", 20:26) ",
-       "with match = \"prefix\" in place of \"Q20-Q26\".", call. = FALSE)
+       "ranges (with a hyphen or a dash), wildcards, regular expressions and ",
+       "comma/space-separated lists are not expanded. Supply an explicit reviewed ",
+       "vector, e.g. paste0(\"Q\", 20:26) with match = \"prefix\" in place of ",
+       "\"Q20-Q26\".", call. = FALSE)
 }
 
 # Clean each distinct value once: code columns repeat a few thousand codes many times.

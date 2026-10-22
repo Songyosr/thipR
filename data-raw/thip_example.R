@@ -22,7 +22,7 @@
 #   person-level chronic conditions, which recur as secondary diagnoses;
 # - an appendicitis cohort (K35x with appendectomy 4709/4701) with 30-day
 #   readmissions (T814, K650, R101), more likely in people with diabetes
-#   (a final teaching step gives about 40 of these patients diabetes);
+#   (a final teaching step brings those with diabetes to 41);
 # - deliveries (O800; O820 with 741), each with a newborn person (Z380,
 #   dischs 6) and some newborn jaundice readmissions (P599) within 14 days;
 # - repeated breast cancer chemotherapy admissions (Z511 with C509);
@@ -450,9 +450,9 @@ for (p in new_dm) {
     if (!is.na(j)) sdx_mat[r, j] <- code
   }
 }
-# Surgical stays often leave chronic conditions unrecorded: for all but one of
-# the people with diabetes recorded in the year before their appendicitis
-# admission, drop it from that admission, so only looking back finds it.
+# To show why looking back matters: for all but one of the people with diabetes
+# recorded in the year before their appendicitis admission, drop it from that
+# admission, so only the look-back finds it.
 is_dm <- function(x) grepl("^E1[0-4]", x)
 looked_back <- Filter(function(p) {
   entry <- which(ep$person == p & ep$kind == "appendix")

@@ -45,9 +45,9 @@ package. Developer files in dev/ are excluded from the site and source archive.
 
 ## Notebook guides and installation
 
-Generate notebooks from the same vignette sources with
+Generate notebooks from the same guide sources with
 `python3 tools/build-guide-notebooks.py <output-directory>`; Documentation.ipynb
 is the navigation index. Do not store executed notebooks containing real data.
-Install tested source archives into a separate THIP user library rather than
-replacing the shared platform installation. Build archives with vignettes so
-installed users can open them without the website.
+On THIP, install into R's personal library (`R_LIBS_USER`), never the platform
+library. Start here is the one vignette installed with the package; the course
+guides are website-only articles in `vignettes/articles/`.
