@@ -150,6 +150,13 @@ show_query(in_both)
 
 `LHS` and `RHS` are dbplyr's names for the left and right tables.
 
+Joins that keep unmatched rows, such as `left_join()`, run on the database
+too, but THIP fills them differently from the example. Where a row has no
+match, the example gives `NA` in the other table's columns; THIP's ClickHouse
+gives empty text and 0, so `is.na()` does not find them. On THIP, test for
+`""` or 0, or collect both results and join them in R, where unmatched rows
+get `NA`.
+
 You cannot join a database table to a data frame in R. dplyr stops with an
 error and suggests its `copy` argument, which would write your data frame to the
 database or paste it into the SQL. To fetch the records of people you hold in R,
@@ -220,6 +227,13 @@ stays |>
   filter(toInt64OrNull(age_y) >= 65) |>
   count(sex)
 ```
+
+Two more differences. Subtracting one date from another works here but stops
+with an error on THIP; count days with `dateDiff("day", start, end)`, which
+both databases know ([Check before you
+trust](data-checks.html#length-of-stay-against-the-dates)). And a
+`left_join()` fills unmatched rows with empty text and 0 on THIP, not `NA`
+([above](#join-tables-on-the-same-connection)).
 
 Stick to ordinary dplyr verbs and the functions in dbplyr's
 [translation list](https://dbplyr.tidyverse.org/articles/translation-function.html).
