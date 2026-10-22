@@ -189,11 +189,16 @@ have looked.
 Some columns record what you could also work out from others. `los`, the length
 of stay in days, should follow from the admission and discharge dates. Count the
 differences between `los` and the days from admission to discharge; a single
-value means the two agree, and shows how `los` counts days:
+value means the two agree, and shows how `los` counts days.
+
+Count the days with `dateDiff("day", adm, dsc)`, not `dsc - adm`. Subtracting
+one date from another works in R and on the example, but on THIP, ClickHouse
+stops with an error. dbplyr does not know `dateDiff()`, so it passes it to the
+database unchanged, and both databases have it:
 
 ```{r los}
 los_check <- admissions |>
-  mutate(days = as.integer(dsc - adm),
+  mutate(days = dateDiff("day", adm, dsc),
          difference = as.integer(los) - days) |>
   count(source_table, difference) |>
   collect() |>
