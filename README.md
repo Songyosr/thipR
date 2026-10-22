@@ -92,7 +92,7 @@ The guides form a short course. They run on an invented example database
 | [Flag conditions](https://songyosr.github.io/thipR/articles/condition-flags.html) | Turn reviewed code lists into flags per person or entry |
 | [Worked example](https://songyosr.github.io/thipR/articles/getting-started.html) | The whole course in one short analysis |
 | [Check before you trust](https://songyosr.github.io/thipR/articles/data-checks.html) | Checks to run on the data before relying on it |
-| [Using THIP data responsibly](https://songyosr.github.io/thipR/articles/responsible-use.html) | What THIP's conditions and good practice ask of you |
+| [Using THIP data responsibly](https://songyosr.github.io/thipR/articles/responsible-use.html) | Working habits: where records stay, small counts, credentials |
 
 The [function reference](https://songyosr.github.io/thipR/reference/index.html)
 describes arguments and return values. [News](https://songyosr.github.io/thipR/news/index.html)

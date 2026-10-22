@@ -203,14 +203,16 @@ example, readmission is more common with diabetes:
 `r summary_table$percent[summary_table$diabetes]`% against
 `r summary_table$percent[!summary_table$diabetes]`% without.
 
-## What leaves THIP
+## Before you share a table
 
-The summary table is the only thing you take out of THIP, and first it must
-pass your project's rule for small counts. With `min_count <- 10`, as in [Using
-THIP data responsibly](responsible-use.html#small-counts), both readmitted
-counts, `r summary_table$readmitted[1]` and `r summary_table$readmitted[2]`,
-would be hidden, and so would their percentages, which give the counts back.
-Hide them, then write the table to a file; here a temporary one:
+Before a table leaves THIP, it has to pass the rules that apply to it: THIP's
+terms and your protocol decide what may leave, not thipR ([Using THIP data
+responsibly](responsible-use.html)). A common rule hides small counts. With
+`min_count <- 10`, as in [Small
+counts](responsible-use.html#small-counts), both readmitted counts,
+`r summary_table$readmitted[1]` and `r summary_table$readmitted[2]`, would be
+hidden, and so would their percentages, which give the counts back. Hide them,
+then write the table to a file; here a temporary one:
 
 ```{r export}
 min_count <- 10  # set this from your protocol
@@ -230,10 +232,9 @@ writeLines(readLines(summary_file))
 ```
 
 The file holds counts for two groups and nothing about any one person; the
-hidden percentages read `NA`. Everything else stays in your R session, which on
-THIP runs inside your THIP account: the records that came in at the three
-`collect()`s (`candidates`, `followup` and `history`) and the tables made from
-them.
+hidden percentages read `NA`. The records that came in at the three
+`collect()`s (`candidates`, `followup` and `history`), and the tables made from
+them, are in your R session, which on THIP runs inside your THIP account.
 
 ## What a real study adds
 

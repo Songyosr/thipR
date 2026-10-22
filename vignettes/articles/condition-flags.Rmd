@@ -360,6 +360,61 @@ flags |>
 Every entry gets the same answer both ways, and `r sum(one_call$diabetes)`
 entries have diabetes.
 
+## A comorbidity screen
+
+One condition is the simple case. `icd_flag()` pays off when a study screens
+many, as a comorbidity screen does. Write the conditions as one declared list,
+which reads as a table of definitions and can be kept with your protocol. The
+lists below illustrate the shape and are not validated definitions; for a real
+study, use and cite a reviewed set, such as a published Charlson or Elixhauser
+coding.
+
+```{r comorbidity-list}
+comorbidities <- list(
+  diabetes = paste0("E", 10:14),
+  hypertension = paste0("I", 10:15),
+  ihd = paste0("I", 20:25),
+  heart_failure = "I50",
+  stroke = paste0("I", 60:64),
+  copd = "J44",
+  ckd = "N18",
+  cirrhosis = c("K703", "K746"),
+  colorectal_cancer = c("C18", "C19", "C20"),
+  dementia = c("F00", "F01", "F02", "F03", "G30")
+)
+```
+
+One call over each entry's admission and its year of history gives one row per
+entry and one column per condition. Read `NA` as `FALSE`, as above, and join
+the result onto `entries`:
+
+```{r comorbidity-screen}
+screen <- bind_rows(entry_admissions, history) |>
+  icd_flag(comorbidities, id = "entry_id",
+           cols = dx_cols, match = "prefix") |>
+  mutate(across(-entry_id, ~ coalesce(.x, FALSE)))
+
+cohort <- entries |>
+  left_join(screen, by = "entry_id")
+
+sapply(select(cohort, diabetes:dementia), sum)
+```
+
+`cohort` is one row per entry with its dates and ten `TRUE`/`FALSE` columns,
+ready for a table of characteristics or a model. In the example several
+conditions are never recorded, and every entry gets `FALSE` for them. For 0/1
+columns, add
+`mutate(across(diabetes:dementia, as.integer))`. Adding a condition means
+adding one line to the list.
+
+The hand-written alternative pastes each record's codes into one text, runs one
+`grepl()` per condition and then combines the records of each entry: more code
+to read and check, and the traps of [A quick look with
+sdx_index](#a-quick-look-with-sdx_index). It is also slower as the list grows:
+on 200,000 invented records with 21 code columns and these ten conditions,
+`icd_flag()` took about a third of the time and gave the same answers. For one
+or two codes, `grepl()` can be as quick.
+
 ## In short
 
 - A condition is a named list of reviewed codes. `icd_flag()` combines each
@@ -372,6 +427,8 @@ entries have diabetes.
 - Dots, case and surrounding spaces are cleaned. Ranges, `%` and `_` stop with
   an error, but `E11*` is read literally and matches nothing: write the codes
   out and use `"prefix"`.
+- For a comorbidity screen, declare all the conditions in one list and flag
+  them in one call: one row per entry, ready to join onto `entries`.
 - `grepl()` on `sdx_index` is a quick look, not a flag. `thip_filter_icd()`
   filters on the database; `icd_flag()` flags collected records in R.
 
