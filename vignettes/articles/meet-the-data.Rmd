@@ -1,0 +1,293 @@
+---
+title: "Meet the THIP data"
+description: >
+  What is in THIP's inpatient tables: the yearly tables, what one row is, and
+  the columns you will use most.
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+# Keep the build machine out of printed query headers (load duckdb first, as it
+# registers its own description when it loads).
+loadNamespace("duckdb")
+registerS3method("db_connection_describe", "duckdb_connection",
+                 function(con, ...) "example database", envir = asNamespace("dbplyr"))
+```
+
+THIP's inpatient data are hospital records from claims paid through the
+National Health Security Office (NHSO). This guide shows what is in them: which
+tables there are, what one row means and which columns you will use most.
+
+The map below is the whole guide in one picture: one table per fiscal year on
+the left, and the groups of columns inside each table on the right.
+
+```{r data-map, echo = FALSE, results = "asis"}
+# Inline, so the diagram travels with the page and keeps its title and description.
+cat("```{=html}", "<div style=\"margin: 0.5rem 0 1.5rem;\">",
+    readLines("figures/thip-data-map.svg"), "</div>", "```", sep = "\n")
+```
+
+Every example runs on the example database: a small set of invented records in
+tables shaped like THIP's, with the same column names and text formats. On THIP,
+set up once as in [Start here](start-here.html), connect with `thip_connect()`
+instead, and the same code works.
+
+```{r connect}
+library(thipR)
+library(dplyr, warn.conflicts = FALSE)
+
+con <- thip_connect_example()
+```
+
+## One table per fiscal year
+
+`thip_tables()` lists the tables you can read:
+
+```{r tables}
+thip_tables(con)
+```
+
+Each table holds one Thai fiscal year. Its name is `nhso` followed by the fiscal
+year in the Buddhist era, and fiscal years run from October to September: fiscal
+year 2567 is October 2023 to September 2024.
+
+The example has three years. On THIP you will find tables from `nhso2560`
+(fiscal year 2017) onwards, and separate tables of COVID-19 vaccinations.
+`thip_tables()` hides tables whose names end in `_local`; if you see them in
+another tool, they are storage pieces of the same data, so use the names without
+`_local`.
+
+## Point at a table
+
+`tbl()` points dplyr at one table on the database. We call it `stays` and use
+it for the rest of this guide:
+
+```{r stays}
+stays <- tbl(con, "nhso2567")
+```
+
+## Look at a few rows {.tabset}
+
+The two tabs run the same query, one in dplyr and one in SQL; use whichever you
+know. Without a sort order, which five rows come back can change.
+
+### dplyr
+
+```{r head}
+stays |>
+  select(age_y, sex, dateadm, datedsc, dischs, pdx, sdx1) |>
+  head(5)
+```
+
+### SQL
+
+```{r head-sql}
+DBI::dbGetQuery(con, "
+  SELECT age_y, sex, dateadm, datedsc, dischs, pdx, sdx1
+  FROM nhso2567
+  LIMIT 5")
+```
+
+## A query, not a copy
+
+`stays` is not a copy of the table in R. It is a query: R sends it to the
+database each time you print it, and only the rows you print come back. That is
+why the dplyr output starts with `# A query: ?? x 7`: the database has not
+counted the rows. `show_query()` shows the SQL that dplyr writes for you:
+
+```{r show-query}
+stays |>
+  select(age_y, sex, dateadm, datedsc, dischs, pdx, sdx1) |>
+  head(5) |>
+  show_query()
+```
+
+To bring a result into R as an ordinary data frame, end the pipeline with
+`collect()`. Do that once the result is small: filter and summarise on the
+database first.
+
+## One row is one inpatient record
+
+Each row is one inpatient record: a stay in hospital, with its dates,
+diagnoses, procedures and discharge. Two columns identify things:
+
+- `tran_id` identifies the record.
+- `pid` identifies the person, as a hashed code: records with the same `pid`
+  belong to the same person.
+
+Both are hashed codes, so treat them as labels, never as numbers. The `…` in the
+printout only means the value was cut to fit the page:
+
+```{r ids}
+stays |>
+  select(pid, tran_id) |>
+  head(2)
+```
+
+## One person, many records {.tabset}
+
+People are admitted more than once, so counting rows counts records, not people.
+First compare the two counts, then count each person's records and see how many
+people have one, two, three and so on.
+
+### dplyr
+
+```{r people}
+stays |>
+  summarise(records = n(), people = n_distinct(pid))
+
+stays |>
+  count(pid, name = "records") |>
+  count(records, name = "people") |>
+  arrange(records)
+```
+
+### SQL
+
+```{r people-sql}
+DBI::dbGetQuery(con, "
+  SELECT count(*) AS records, count(DISTINCT pid) AS people
+  FROM nhso2567")
+
+DBI::dbGetQuery(con, "
+  SELECT records, count(*) AS people
+  FROM (SELECT pid, count(*) AS records FROM nhso2567 GROUP BY pid)
+  GROUP BY records
+  ORDER BY records")
+```
+
+## Every column is text
+
+`thip_columns()` lists one table's columns and how each is stored:
+
+```{r columns}
+thip_columns(con, "nhso2567") |>
+  head(8)
+```
+
+Every column is stored as text (`String`), including ages, dates and codes. Text
+sorts character by character, so the largest age as text is not the oldest
+person:
+
+```{r text-age}
+stays |>
+  summarise(as_text = max(age_y, na.rm = TRUE), as_number = max(as.integer(age_y), na.rm = TRUE))
+```
+
+As text, `"99"` sorts after `"102"`, because `"9"` comes after `"1"`. Three habits
+follow from this:
+
+- **Numbers:** convert with `as.integer()` before you compare them, as in
+  `filter(as.integer(age_y) >= 65)`.
+- **Codes:** keep them as text and compare with quotes, keeping leading zeros:
+  `sex == "2"`, `health_region == "01"`.
+- **Empty values** are empty text, `""`, not `NA`. Test for them with `== ""` or
+  `!= ""`. When a column holds an empty value, the printout puts quotes around
+  every value in that column, as in the `sdx1` column above.
+
+Dates are text too, in two styles: `dateadm` and `datedsc` look like
+`"20231015"`, while `death_date` looks like `"2023-10-15"`. Convert them before
+you compare or subtract them; [Prepare and filter sources](thip-sources.html)
+shows how.
+
+## The columns, by topic
+
+The package includes `thip_fields`, a reference of the columns written from
+THIP's data dictionary. These are the ones you will use most:
+
+```{r key-fields}
+key <- c("pid", "tran_id", "sex", "age_y", "dateadm", "datedsc", "dischs",
+         "pdx", "sdx1", "proc1", "death_date", "health_region", "superdistrict")
+
+thip_fields |>
+  filter(field %in% key) |>
+  select(field, description, format) |>
+  knitr::kable()
+```
+
+To see every field, print `thip_fields` or open it with `View(thip_fields)`; the
+`codes` column gives the meaning of each code.
+
+## Diagnoses and procedures
+
+Each record has one principal diagnosis, `pdx`: the main reason for the stay.
+Up to 20 secondary diagnoses follow in `sdx1` to `sdx20`, such as long-term
+conditions present at the time. THIP's dictionary lists these as ICD-10; Thai
+hospitals code with ICD-10-TM, the Thai modification of ICD-10. Codes are written
+without the dot: `J189` is J18.9. Procedures, in `proc1` to `proc21`, use
+ICD-9-CM.
+
+The most common principal diagnoses in the example:
+
+```{r top-pdx}
+stays |>
+  count(pdx, sort = TRUE) |>
+  head(8)
+```
+
+Codes have three to five characters and no dot. Secondary diagnoses spread
+across many columns; the notebook platform also gives `sdx_index`, which joins
+the non-empty ones into one text:
+
+```{r sdx}
+stays |>
+  filter(sdx2 != "") |>
+  select(pdx, sdx1, sdx2, sdx3, sdx_index) |>
+  head(4)
+```
+
+To find the records with a condition, you search `pdx` and every `sdx` column;
+[Flag conditions locally](condition-flags.html) shows how.
+
+## Discharge and death
+
+`dischs` records the patient's condition at discharge: recovered, improved, not
+improved, dead, or a delivery or newborn outcome. `discht` records how they left:
+with approval, against advice, by transfer and so on. Here are the `dischs`
+values in the example, and what each code means:
+
+```{r dischs}
+stays |>
+  count(dischs, sort = TRUE)
+
+thip_fields |>
+  filter(field == "dischs") |>
+  pull(codes) |>
+  strsplit("; ") |>
+  unlist()
+```
+
+Most records end as 2, improved.
+
+`death_date` is the date of death from death data linked to the person.
+Before you treat a death as happening during a particular stay, convert both
+dates (their formats differ) and compare `death_date` with `datedsc`.
+
+## Where
+
+`health_region` is one of Thailand's 13 health regions, written with two digits.
+`superdistrict` is a group of districts in one province, which THIP uses instead
+of single districts to protect privacy. THIP's dictionary gives it as the
+location of the treating facility, so counts by super-district are counts by
+place of treatment. To map super-districts to districts, boundaries or
+populations, see [THIP Commons](https://songyosr.github.io/thip-commons/).
+
+## In short
+
+- There is one table per Thai fiscal year, named in the Buddhist era, running
+  October to September.
+- `tbl()` gives a query that runs on the database; only what you print or
+  `collect()` comes into R.
+- One row is one inpatient record; records with the same `pid` belong to the
+  same person.
+- Every column is text: convert numbers and dates, compare codes as text, and
+  test empty values with `""`.
+- Diagnoses are ICD-10 codes without the dot, in `pdx` and `sdx1` to `sdx20`.
+- `thip_fields` describes each column and what its codes mean.
+
+Next: set up THIP access in [Start here](start-here.html), then
+[prepare and filter sources](thip-sources.html).
+
+```{r disconnect, include = FALSE}
+DBI::dbDisconnect(con)
+```

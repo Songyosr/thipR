@@ -12,18 +12,23 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 GUIDES = {"start-here", "thip-sources", "time-windows", "condition-flags", "getting-started"}
+# Website-only articles (vignettes/articles); pkgdown also writes a redirect page
+# for each at articles/articles/<name>.
+WEB_ARTICLES = {"meet-the-data"}
 REFERENCES = {"collect.thip_window_plan", "icd_flag", "thip_collect", "thip_columns",
               "thip_connect", "thip_disconnect", "thip_filter_icd", "thip_setup",
               "thip_table", "thip_tables", "thip_window", "thip_date_audit",
-              "thip_connect_example"}
+              "thip_connect_example", "thip_fields"}
 PAGES = {"index", "authors", "404", "articles/index", "reference/index", "news/index",
          "AGENTS"}  # pkgdown renders every root .md; AGENTS.md is public guidance
-PAGES |= {"articles/" + name for name in GUIDES}
+PAGES |= {"articles/" + name for name in GUIDES | WEB_ARTICLES}
+PAGES |= {"articles/articles/" + name for name in WEB_ARTICLES}
 PAGES |= {"reference/" + name for name in REFERENCES}
 ASSETS = {".css", ".js", ".map", ".svg", ".png", ".ico", ".woff", ".woff2", ".ttf"}
 GENERATED = {"search.json", "sitemap.xml", "pkgdown.yml", "llms.txt", ".nojekyll", "deps/data-deps.txt"}
 PATTERNS = {
     "internal material": r"VERIFICATION|ARCHITECTURE|meta/(?:runtime|workflows|benchmarks)|/Users/|candidate source rows|real-data rerun",
+    "build machine description": r"\b\w+@(?:Darwin|Linux|Windows)\b",
     "private network address": r"\b10\.\d+\.\d+\.\d+\b|\b192\.168\.\d+\.\d+\b",
     "credential marker": r"gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|-----BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY-----",
     "credential assignment": r'''(?i)(?:password|token|api_key)\s*[=:]\s*["'][^"']{8,}["']''',

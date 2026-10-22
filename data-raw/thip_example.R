@@ -12,8 +12,7 @@
 # distribution was taken from real patient data. The only external input is the
 # public super-district/health-region lookup (THIP_SuperDistrict-HR_Codes.csv),
 # whose pairs are copied literally into `sd_region`. Identifiers are random
-# 56-character hexadecimal strings shaped like SHA-224 digests; they hash
-# nothing. DRG codes and relative weights follow the shape of the real fields
+# hexadecimal strings; they hash nothing. DRG codes and relative weights follow the shape of the real fields
 # but are invented, not produced by the Thai DRG grouper.
 #
 # Run from the package root: Rscript data-raw/thip_example.R

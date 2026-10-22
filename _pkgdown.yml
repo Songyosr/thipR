@@ -12,6 +12,10 @@ navbar:
       text: Start here
       href: articles/start-here.html
 articles:
+- title: Learn THIP data
+  navbar: Learn
+  contents:
+  - articles/meet-the-data
 - title: Learn the workflow
   navbar: Guides
   contents:
@@ -26,6 +30,7 @@ reference:
   - thip_setup
   - thip_connect
   - thip_connect_example
+  - thip_fields
   - thip_tables
   - thip_columns
   - thip_table

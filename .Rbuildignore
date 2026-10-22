@@ -12,3 +12,4 @@
 ^dev$
 ^AGENTS\.md$
 ^data-raw$
+^vignettes/articles$
