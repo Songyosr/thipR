@@ -34,7 +34,7 @@ guide behind any step:
 4. Select the candidate records on the database with `thip_filter_icd()`:
    [From question to cohort](question-to-cohort.html#select-the-candidate-records).
 5. Choose one entry per person in R:
-   [From question to cohort](question-to-cohort.html#choose-one-entry-per-person).
+   [From question to cohort](question-to-cohort.html#choose-the-entries).
 6. Fetch the follow-up with `thip_window()` and mark readmissions:
    [Look back and follow up](look-back-follow-up.html#plan-the-follow-up).
 7. Fetch the look-back history:

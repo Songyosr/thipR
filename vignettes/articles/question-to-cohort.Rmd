@@ -1,8 +1,8 @@
 ---
 title: "From question to cohort"
 description: >
-  Turn a research question into a table of entries, one row per person, by
-  selecting records on the database and choosing entries in R.
+  Turn a research question into a table of entries: select records on the
+  database, then choose the entries in R.
 ---
 
 ```{r setup, include = FALSE}
@@ -69,15 +69,16 @@ A few words name the pieces of a cohort. This course uses each in one sense:
 - **Candidate record:** a record that passes the selection rules: admitted in
   the study period, with a principal diagnosis of appendicitis. One person can
   have several.
-- **Entry:** a candidate record chosen to bring a person into the study; this
-  course chooses one per person, their first. Its `tran_id` becomes the
+- **Entry:** a candidate record chosen to bring a person into the study. A
+  study can take each person's first, as this course does, or every one
+  ([Choose the entries](#choose-the-entries)). Its `tran_id` becomes the
   entry's `entry_id`.
 - **Index date:** the date you measure time from. This question needs two: the
   look-back for history such as diabetes runs up to admission (`adm_date`), and
   the 30 days of follow-up are counted from discharge (`dsc_date`).
 
-In this course the cohort is the table of entries, one row per person; this
-guide calls it `entries`.
+The cohort is the table of entries, one row per entry; this guide calls it
+`entries`.
 
 ## Stack the tables, convert the dates
 
@@ -281,7 +282,7 @@ with appendicitis at 14 and again at 16. Apply the age rule first and the
 admission at 16 becomes their entry; choose the first admission first and the
 rule then drops them.
 
-## Choose one entry per person
+## Choose the entries
 
 The selection is small, so collect it into R as `candidates`, one row per
 candidate record, and check whether anyone has more than one:
@@ -295,12 +296,12 @@ candidates |>
 ```
 
 In the example, every person has one candidate record. Check this on THIP too:
-a person can be admitted with appendicitis more than once, and then you have to
-choose.
+a person can be admitted with appendicitis more than once, and then your
+protocol says which of their admissions enter.
 
-Each person enters once, at their first appendicitis admission with a discharge
-date. Drop candidates without a discharge date, sort each person's candidates
-by admission date and keep the first:
+This course lets each person enter once, at their first appendicitis admission
+with a discharge date. Drop candidates without a discharge date, sort each
+person's candidates by admission date and keep the first:
 
 ```{r entries}
 entries <- candidates |>
@@ -318,6 +319,33 @@ entries |>
 columns (`.keep_all = TRUE`), and `select()` keeps four of them, renaming three.
 Sorting by `tran_id` after the admission date breaks ties between admissions on
 the same day in a fixed way, so the same data always give the same entries.
+
+### Every admission as an entry
+
+One entry per person suits a question about people, such as what follows a
+first episode. A question about episodes, such as what follows each heart
+failure admission, can let every candidate record enter, each with its own
+look-back and follow-up. Leave out `arrange()` and `distinct()`, so that every
+admission with a discharge date keeps its own `entry_id`:
+
+```{r every-admission}
+every_admission <- candidates |>
+  filter(!is.na(dsc)) |>
+  select(pid, entry_id = tran_id,
+         adm_date = adm, dsc_date = dsc)
+
+c(first_only = nrow(entries),
+  every_admission = nrow(every_admission))
+```
+
+The two are the same in the example, where nobody has two candidate records.
+Where people do, your protocol has three more things to settle. An admission
+inside one entry's follow-up can be that entry's outcome, a new entry, or both.
+A person's entries are not independent, so the analysis has to allow for that,
+for example by clustering on `pid`. And one record can fall inside two entries'
+windows ([Look back and follow
+up](look-back-follow-up.html#several-entries-per-person)). The later guides
+work per `entry_id`, so their code runs unchanged.
 
 ## The funnel
 
@@ -376,7 +404,8 @@ entries <- candidates |>
 - Run `thip_date_audit()` before you filter on a converted date, and decide
   what a missing date means for your study.
 - Select candidates on the database with `filter()` and `thip_filter_icd()`,
-  then collect them and choose one entry per person in R.
+  then collect them and choose the entries in R: each person's first, as here,
+  or every admission.
 - Count records and people after every step.
 
 Next: [Look back and follow up](look-back-follow-up.html) fetches the records

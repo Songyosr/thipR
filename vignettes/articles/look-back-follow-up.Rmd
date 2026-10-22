@@ -346,9 +346,11 @@ before you plan.
 
 ## Several entries per person
 
-Here each person has one entry. If you keep several entries per person, such as
-every appendicitis admission, give each its own `entry_id`. Their windows may
-then overlap, and a record inside two windows comes back twice, once for each
+Here each person has one entry. If you keep several entries per person, as in
+[Every admission as an
+entry](question-to-cohort.html#every-admission-as-an-entry), each needs its own
+`entry_id`. Their windows may then overlap, and a record inside two windows
+comes back twice, once for each
 entry. That is right when you count per entry. To count a person's admissions
 instead, keep one of each with `distinct(pid, tran_id)`.
 
