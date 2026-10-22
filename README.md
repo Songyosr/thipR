@@ -87,7 +87,7 @@ The guides form a short course. They run on an invented example database
 | [Start here](https://songyosr.github.io/thipR/articles/start-here.html) | Install thipR and connect to THIP |
 | [Meet the THIP data](https://songyosr.github.io/thipR/articles/meet-the-data.html) | The yearly tables, what one row is, the main columns |
 | [Working with a database from R](https://songyosr.github.io/thipR/articles/database-from-r.html) | Where your code runs, and when data come into R |
-| [From question to cohort](https://songyosr.github.io/thipR/articles/question-to-cohort.html) | Turn a research question into one entry per person |
+| [From question to cohort](https://songyosr.github.io/thipR/articles/question-to-cohort.html) | Turn a research question into a table of entries |
 | [Look back and follow up](https://songyosr.github.io/thipR/articles/look-back-follow-up.html) | Fetch each person's history and outcomes around their entry |
 | [Flag conditions](https://songyosr.github.io/thipR/articles/condition-flags.html) | Turn reviewed code lists into flags per person or entry |
 | [Worked example](https://songyosr.github.io/thipR/articles/getting-started.html) | The whole course in one short analysis |
