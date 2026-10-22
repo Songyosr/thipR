@@ -239,7 +239,7 @@ stays |>
 ```
 
 To find the records with a condition, you search `pdx` and every `sdx` column;
-[Flag conditions locally](condition-flags.html) shows how.
+[Flag conditions](condition-flags.html) shows how.
 
 ## Discharge and death
 

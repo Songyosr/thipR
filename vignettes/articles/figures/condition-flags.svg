@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 410" role="img" aria-labelledby="cf-t cf-d">
+  <title id="cf-t">From records to flags</title>
+  <desc id="cf-d">On the left, three records from the year before: two for entry A and one for entry B, each with a principal diagnosis (pdx) and two secondary diagnoses (sdx1, sdx2), some of them blank. Entry C has no records. icd_flag() is given one list, diabetes, codes starting E10 to E14, with id = "entry_id" and match = "prefix". It combines each entry's records, across rows and columns, into one row per entry: A is TRUE, because one of its records has E119; B is FALSE, because its codes A09 and I10 are recorded but none is on the list. C gets no row. Left-joining the result onto entries keeps every entry: A TRUE, B FALSE, and C NA, because no code was recorded for it. A note adds that icd_flag() also gives NA when every selected column of an entry's records is blank.</desc>
+  <style>
+    .h { font: 600 14px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #1f2933; }
+    .b { font: 600 13px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #1f2933; }
+    .s { font: 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #52606d; }
+    .n { font: 600 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #52606d; }
+    .m { font: 11.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #1f2933; }
+    .k { font: 600 11.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #52606d; }
+    .e { font: 11.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #9aa5b1; }
+    .box { fill: #ffffff; stroke: #9aa5b1; }
+    .out { fill: #dbe7f3; stroke: #486581; stroke-width: 1.5; }
+    .arrow { fill: none; stroke: #486581; stroke-width: 1.5; }
+    .rule { stroke: #d9e2ec; stroke-width: 1; }
+  </style>
+  <rect x="0" y="0" width="760" height="410" fill="#ffffff"/>
+
+  <text class="h" x="24" y="30">From records to flags</text>
+  <text class="s" x="24" y="50">icd_flag() combines each entry's records, rows and columns, into one answer per list.</text>
+
+  <!-- Records -->
+  <text class="n" x="24" y="82">Records in the year before</text>
+  <rect class="box" x="24" y="92" width="300" height="112" rx="6"/>
+  <text class="k" x="38" y="112">entry_id</text>
+  <text class="k" x="118" y="112">pdx</text>
+  <text class="k" x="188" y="112">sdx1</text>
+  <text class="k" x="258" y="112">sdx2</text>
+  <line class="rule" x1="24" y1="120" x2="324" y2="120"/>
+  <text class="m" x="38" y="140">A</text>
+  <text class="m" x="118" y="140">J189</text>
+  <rect x="182" y="126" width="44" height="20" rx="3" fill="#fdf3e1"/>
+  <text class="m" x="188" y="140">E119</text>
+  <text class="m" x="258" y="140">I10</text>
+  <text class="m" x="38" y="166">A</text>
+  <text class="m" x="118" y="166">N390</text>
+  <text class="e" x="188" y="166">""</text>
+  <text class="e" x="258" y="166">""</text>
+  <text class="m" x="38" y="192">B</text>
+  <text class="m" x="118" y="192">A09</text>
+  <text class="m" x="188" y="192">I10</text>
+  <text class="e" x="258" y="192">""</text>
+  <text class="s" x="24" y="226">Entry C has no records in the year before.</text>
+
+  <!-- icd_flag() -->
+  <path class="arrow" d="M 326 146 L 352 146"/>
+  <path class="arrow" d="M 345 141 L 352 146 L 345 151"/>
+  <rect class="box" x="354" y="100" width="170" height="92" rx="6"/>
+  <text class="b" x="366" y="122">icd_flag()</text>
+  <text class="m" x="366" y="142">diabetes: E10–E14</text>
+  <text class="m" x="366" y="160">id = "entry_id"</text>
+  <text class="m" x="366" y="178">match = "prefix"</text>
+
+  <!-- One row per entry -->
+  <path class="arrow" d="M 524 146 L 550 146"/>
+  <path class="arrow" d="M 543 141 L 550 146 L 543 151"/>
+  <text class="n" x="552" y="82">One row per entry</text>
+  <rect class="out" x="552" y="92" width="184" height="86" rx="6"/>
+  <text class="k" x="566" y="112">entry_id</text>
+  <text class="k" x="646" y="112">diabetes</text>
+  <line x1="552" y1="120" x2="736" y2="120" stroke="#486581" stroke-opacity="0.35"/>
+  <text class="m" x="566" y="140">A</text>
+  <text class="m" x="646" y="140">TRUE</text>
+  <text class="m" x="566" y="166">B</text>
+  <text class="m" x="646" y="166">FALSE</text>
+
+  <!-- Join onto entries -->
+  <path class="arrow" d="M 644 180 L 644 258"/>
+  <path class="arrow" d="M 639 251 L 644 259 L 649 251"/>
+  <text class="m" x="654" y="214">left_join()</text>
+  <text class="s" x="654" y="231">onto entries</text>
+
+  <text class="n" x="24" y="252">Every entry, after the join</text>
+  <rect class="box" x="24" y="262" width="712" height="112" rx="6"/>
+  <text class="k" x="38" y="282">entry_id</text>
+  <text class="k" x="118" y="282">diabetes</text>
+  <text class="n" x="210" y="282">what it means</text>
+  <line class="rule" x1="24" y1="290" x2="736" y2="290"/>
+  <text class="m" x="38" y="310">A</text>
+  <text class="m" x="118" y="310">TRUE</text>
+  <text class="s" x="210" y="310">a selected code is on the list: E119 starts with E11</text>
+  <text class="m" x="38" y="336">B</text>
+  <text class="m" x="118" y="336">FALSE</text>
+  <text class="s" x="210" y="336">codes were recorded, but none is on the list: not proof that B has no diabetes</text>
+  <text class="m" x="38" y="362">C</text>
+  <text class="m" x="118" y="362">NA</text>
+  <text class="s" x="210" y="362">no code recorded: C had no records, so no row before the join</text>
+
+  <text class="s" x="24" y="398">icd_flag() also gives NA when every selected column of an entry's records is blank.</text>
+</svg>

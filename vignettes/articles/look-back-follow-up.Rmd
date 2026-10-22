@@ -124,6 +124,174 @@ The other three bounds move the edges:
 Offsets count days, not calendar months or years: `c(1L, 31L)` is always the
 same 30 days, whatever the month.
 
+Try other windows in the explorer below: set the edges to −365 and 0 for the
+year before the index date, or switch the bounds and watch days 1 and 31.
+
+```{=html}
+<div class="wx" id="window-explorer">
+<p class="wx-nojs">The window explorer needs JavaScript; the table above shows what each bound includes.</p>
+<div class="wx-app" role="group" aria-labelledby="wx-title" hidden>
+<p class="wx-title" id="wx-title">Window explorer</p>
+<p class="wx-hint" id="wx-hint">Edges are whole days from the index date (day 0), smallest first.</p>
+<div class="wx-controls">
+<label for="wx-start">Window start <input id="wx-start" type="number" step="1" value="1" autocomplete="off" aria-describedby="wx-hint"></label>
+<label for="wx-end">Window end <input id="wx-end" type="number" step="1" value="31" autocomplete="off" aria-describedby="wx-hint"></label>
+<div class="wx-bounds" role="radiogroup" aria-labelledby="wx-bounds-label">
+<span id="wx-bounds-label">Bounds</span>
+<label><input type="radio" name="wx-bounds" value="[)" autocomplete="off" checked><code>[)</code><span class="wx-sr">, includes the start, excludes the end</span></label>
+<label><input type="radio" name="wx-bounds" value="[]" autocomplete="off"><code>[]</code><span class="wx-sr">, includes both</span></label>
+<label><input type="radio" name="wx-bounds" value="(]" autocomplete="off"><code>(]</code><span class="wx-sr">, excludes the start, includes the end</span></label>
+<label><input type="radio" name="wx-bounds" value="()" autocomplete="off"><code>()</code><span class="wx-sr">, excludes both</span></label>
+</div>
+</div>
+<div class="wx-track" aria-hidden="true"><div class="wx-axis"></div></div>
+<p class="wx-out" aria-live="polite" aria-atomic="true"><span id="wx-days"></span> <span id="wx-list"></span></p>
+<p class="wx-code">In R: <code></code> <code></code></p>
+<p class="wx-note">Filled dots are example record days inside the window. They are evenly spaced, not to scale.</p>
+</div>
+</div>
+<style>
+.wx { margin: 0.5rem 0 1.5rem; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #1f2933; }
+.wx [hidden] { display: none !important; }
+.wx p { margin: 0; }
+.wx code { font: 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: #1f2933; background: #eef2f6; padding: 1px 4px; border-radius: 4px; white-space: nowrap; }
+.wx-nojs, .wx-hint, .wx-note { font-size: 13px; color: #52606d; }
+.wx-app { background: #f5f7fa; border: 1px solid #9aa5b1; border-radius: 10px; padding: 14px 16px; }
+.wx-title { font-size: 14px; font-weight: 600; }
+.wx-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 24px; margin: 10px 0 12px; font-size: 14px; }
+.wx label { margin: 0; font-weight: 400; white-space: nowrap; }
+.wx input[type=number] { width: 5.5em; margin: 0 0 0 6px; padding: 3px 6px; font: 14px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: #1f2933; background: #fff; border: 1px solid #9aa5b1; border-radius: 6px; }
+.wx input[type=radio] { margin: 0 4px 0 12px; accent-color: #486581; vertical-align: middle; }
+.wx-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.wx-track { background: #fff; border: 1px solid #9aa5b1; border-radius: 6px; padding: 8px 18px 4px; }
+.wx-axis { position: relative; height: 86px; }
+.wx-line { position: absolute; left: -10px; right: -10px; top: 58px; border-top: 1.5px solid #9aa5b1; }
+.wx-band { position: absolute; top: 18px; height: 26px; background: #fdf3e1; box-shadow: inset 0 0 0 1px rgba(72, 101, 129, 0.3); }
+.wx-band.wx-before { background: #e3f0ff; }
+.wx-band.wx-both { background: #eef2f6; }
+.wx-br { position: absolute; top: 18px; font: 600 22px/26px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: #1f2933; }
+.wx-brl { transform: translateX(-85%); }
+.wx-brr { transform: translateX(-15%); }
+.wx-zero, .wx-guide { position: absolute; margin-left: -0.5px; }
+.wx-zero { top: 15px; height: 44px; border-left: 1px solid #486581; }
+.wx-guide { top: 44px; height: 15px; border-left: 1px dashed #7b8794; }
+.wx-dot { position: absolute; top: 59px; width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px; box-sizing: border-box; border-radius: 50%; background: #fff; border: 1.5px solid #7b8794; }
+.wx-dot.wx-in { background: #1f2933; border-color: #1f2933; }
+.wx-lab, .wx-idx { position: absolute; top: 68px; transform: translateX(-50%); font-size: 12px; line-height: 16px; color: #52606d; white-space: nowrap; }
+.wx-lab.wx-in { color: #1f2933; font-weight: 600; }
+.wx-idx { top: 0; line-height: 14px; font-weight: 600; color: #486581; }
+.wx .wx-out { margin: 12px 0 6px; font-size: 15px; }
+@media (max-width: 480px) {
+  .wx-app { padding: 12px; }
+  .wx-track { padding: 8px 12px 4px; }
+  .wx-axis { height: 102px; }
+  .wx-lab.wx-odd { top: 84px; }
+}
+</style>
+<script>
+(function () {
+  var root = document.getElementById("window-explorer");
+  if (!root || !root.querySelector || !window.addEventListener) return;
+  var days = [-400, -365, -30, -1, 0, 1, 15, 30, 31, 45], n = days.length, pad = 365;
+  var axis = root.querySelector(".wx-axis");
+  var start = document.getElementById("wx-start"), end = document.getElementById("wx-end");
+  var radios = root.querySelectorAll("input[name=wx-bounds]");
+  var said = document.getElementById("wx-days"), listed = document.getElementById("wx-list");
+  var codeLine = root.querySelector(".wx-code"), code = codeLine.querySelectorAll("code");
+
+  function add(cls, text, left) {
+    var e = document.createElement("div");
+    e.className = cls;
+    if (text) e.textContent = text;
+    if (left !== undefined) e.style.left = left + "%";
+    axis.appendChild(e);
+    return e;
+  }
+  function at(i) { return (i + 0.5) * 100 / n; }
+  function fmt(d) {
+    var s = String(Math.abs(d)).replace(/\B(?=(\d{3})+$)/g, ",");
+    return d < 0 ? "\u2212" + s : s;
+  }
+  function words(xs) {
+    var f = xs.map(fmt), last = f.pop();
+    return f.length ? f.join(", ") + " and\u00a0" + last : last;
+  }
+  // Example days sit evenly spaced; edges between them are placed in proportion,
+  // and edges up to a year beyond either end run into the margin.
+  function pos(v) {
+    var z = n - 1, i = 0;
+    if (v < days[0]) return days[0] - v > pad ? null : at(0) * (1 - (days[0] - v) / pad);
+    if (v > days[z]) return v - days[z] > pad ? null : at(z) + (100 - at(z)) * (v - days[z]) / pad;
+    while (v > days[i + 1]) i++;
+    return at(i) + (at(i + 1) - at(i)) * (v - days[i]) / (days[i + 1] - days[i]);
+  }
+  function whole(x) {
+    var t = String(x).replace(/^\s+|\s+$/g, ""), v = t === "" ? NaN : Number(t);
+    return isFinite(v) && Math.floor(v) === v && Math.abs(v) <= 99999 ? v : null;
+  }
+  function show(e, on) { e.style.display = on ? "" : "none"; }
+
+  var zero = at(days.indexOf(0));
+  add("wx-line");
+  var band = add("wx-band");
+  add("wx-zero", "", zero);
+  add("wx-idx", "index date", zero);
+  var gs = add("wx-guide"), ge = add("wx-guide");
+  var bs = add("wx-br wx-brl"), be = add("wx-br wx-brr"), dots = [], labs = [];
+  for (var i = 0; i < n; i++) {
+    dots.push(add("wx-dot", "", at(i)));
+    labs.push(add("wx-lab", fmt(days[i]), at(i)));
+  }
+
+  function update() {
+    var b = "[)", s = whole(start.value), e = whole(end.value), inside = [];
+    for (var j = 0; j < radios.length; j++) if (radios[j].checked) b = radios[j].value;
+    var typed = s !== null && e !== null, ok = typed && s <= e;
+    var lo = ok ? s + (b.charAt(0) === "(" ? 1 : 0) : 0;
+    var hi = ok ? e - (b.charAt(1) === ")" ? 1 : 0) : -1;
+    show(codeLine, typed);
+    if (typed) {
+      code[0].textContent = "window = c(" + s + "L, " + e + "L),";
+      code[1].textContent = "bounds = \"" + b + "\"";
+    }
+    if (!typed) said.textContent = "Enter whole numbers of days for the start and end.";
+    else if (s > e) said.textContent = "thip_window() stops with an error here: give the smaller offset first.";
+    else if (lo > hi) said.textContent = "No day is inside: this window is empty, so no record comes back.";
+    else if (lo === hi) said.textContent = "Only day " + fmt(lo) + " is inside.";
+    else said.textContent = "Days " + fmt(lo) + " to " + fmt(hi) + " are inside (" + fmt(hi - lo + 1) + " days).";
+    for (var k = 0; k < n; k++) {
+      var yes = days[k] >= lo && days[k] <= hi;
+      dots[k].className = yes ? "wx-dot wx-in" : "wx-dot";
+      labs[k].className = "wx-lab" + (k % 2 ? " wx-odd" : "") + (yes ? " wx-in" : "");
+      if (yes) inside.push(days[k]);
+    }
+    listed.textContent = !ok ? "" : inside.length ?
+      "Example days inside: " + words(inside) + "." : "None of the example days is inside.";
+    var a = ok ? pos(s) : null, z = ok ? pos(e) : null;
+    show(band, ok); show(bs, a !== null); show(gs, a !== null); show(be, z !== null); show(ge, z !== null);
+    if (!ok) return;
+    if (a === null) a = s < days[0] ? 0 : 100;
+    if (z === null) z = e < days[0] ? 0 : 100;
+    band.className = "wx-band" + (e <= 0 ? " wx-before" : s >= 0 ? "" : " wx-both");
+    band.style.left = a + "%";
+    band.style.width = (z - a) + "%";
+    bs.style.left = gs.style.left = a + "%";
+    be.style.left = ge.style.left = z + "%";
+    bs.textContent = b.charAt(0);
+    be.textContent = b.charAt(1);
+  }
+
+  start.addEventListener("input", update);
+  end.addEventListener("input", update);
+  for (var r = 0; r < radios.length; r++) radios[r].addEventListener("change", update);
+  window.addEventListener("pageshow", update);
+  update();
+  root.querySelector(".wx-nojs").hidden = true;
+  root.querySelector(".wx-app").hidden = false;
+})();
+</script>
+```
+
 ## Plan the follow-up
 
 The piped-in table is the records to search, `admissions`, trimmed to the
@@ -197,10 +365,10 @@ the entry admission itself.
 ## Count readmissions per entry
 
 `followup` has rows only for entries that were readmitted. Person B in the
-picture at the top is such an entry: it is in `entries` but has no rows in
-`followup`. Each row will count as one readmission, so first check that no
-record came back twice for the same entry; a record repeated in the source would
-count as two readmissions:
+picture at the top was not: it is in `entries` but has no rows in `followup`.
+Each row will count as one readmission, so first check that no record came back
+twice for the same entry; a record repeated in the source would count as two
+readmissions:
 
 ```{r repeats}
 followup |>
@@ -399,9 +567,9 @@ instead, keep one of each with `distinct(pid, tran_id)`.
 - `batch_size` counts people, not rows, and does not change the result;
   `attr(x, "window_report")` summarises the run.
 
-Next: [Flag conditions locally](condition-flags.html) (coming next) searches
-`history`, and the entry admissions in `candidates`, for diabetes, and compares
-`readmit` between people with and without it.
+Next: [Flag conditions](condition-flags.html) searches `history`, and the entry
+admissions in `candidates`, for diabetes; the [worked example](getting-started.html)
+then compares `readmit` between people with and without it.
 
 ```{r disconnect, include = FALSE}
 DBI::dbDisconnect(con)

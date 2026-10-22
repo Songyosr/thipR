@@ -1,0 +1,192 @@
+---
+title: "Using THIP data responsibly"
+description: >
+  What THIP's conditions ask of you, and the working habits that follow: what
+  to take out, small counts, credentials and the decisions that are yours.
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+# Keep the build machine out of printed query headers (load duckdb first, as it
+# registers its own description when it loads).
+loadNamespace("duckdb")
+registerS3method("db_connection_describe", "duckdb_connection",
+                 function(con, ...) "example database", envir = asNamespace("dbplyr"))
+```
+
+THIP's inpatient tables are records of real people's stays in hospital.
+Handling them well protects those people, keeps your access to THIP, and makes
+your results worth trusting. This guide covers what THIP's conditions ask of
+you and the working habits that follow from them: what to take out of THIP,
+small counts, credentials, and the decisions that belong to your protocol.
+
+## What THIP's conditions say
+
+THIP publishes the conditions that come with registering as a user. In short:
+
+- THIP is a data warehouse for research.
+- Ownership of the data stays with the agency that owns them; using them
+  through THIP does not make them yours.
+- Use the system honestly, and only within your role.
+- Do not share your account or your password.
+- When you download data, attach your institution's research-ethics approval.
+- THIP may cancel access that is used outside its purpose or its conditions.
+
+This is a summary, so read the conditions in THIP's own words. The rest of this
+guide is about keeping to them while you work.
+
+## Keep records inside THIP
+
+Your analysis runs inside THIP's notebook platform, where the records are. Take
+out only what your approved protocol allows. Usually that means aggregate
+tables, such as counts, percentages and model estimates, rather than records or
+identifiers such as `pid` and `tran_id`. Taking out means more than
+downloading: a table copied into a document, a screenshot and a notebook that
+kept its output all leave THIP too.
+
+thipR is built for this way of working. Queries run on the database, and only
+what you print or `collect()` comes into your R session, which on THIP runs
+inside your account. The checks in [Check before you trust](data-checks.html)
+bring back counts, and data frames of records, such as `candidates` in [From
+question to cohort](question-to-cohort.html), stay in that session.
+
+Two habits help:
+
+- **Look before anything leaves.** Read each table as a stranger would: does it
+  hold an identifier, the dates of one person's stay, or a count so small that
+  it points to someone?
+- **Clear a notebook's output before you share it.** A notebook keeps what it
+  printed, so one that printed records carries them wherever it goes.
+
+## Small counts
+
+A small count can point to a few people, especially beside a place, an age group
+or a month. A protocol usually sets the smallest count you may show, and how to
+show smaller ones, for example as `<10`. Take the threshold from your protocol,
+and follow THIP's rule as well where it sets one; this course does not choose a
+number.
+
+As an example, count the records of fiscal year 2567 by discharge status
+(`dischs`) in the example database:
+
+```{r by-status}
+library(thipR)
+library(dplyr, warn.conflicts = FALSE)
+
+con <- thip_connect_example()
+
+by_status <- tbl(con, "nhso2567") |>
+  count(dischs, name = "records") |>
+  arrange(dischs) |>
+  collect()
+```
+
+Set the threshold once, as a variable, and replace every count below it before
+the table leaves THIP:
+
+```{r suppress}
+min_count <- 10  # set this from your protocol
+
+by_status |>
+  mutate(records = if_else(records < min_count, paste0("<", min_count),
+                           as.character(records)))
+```
+
+The count for discharge status
+`r by_status$dischs[by_status$records < min_count]`, not delivered, was below
+`r min_count` and now reads `<10`.
+
+Hiding one cell is not always enough. If your report also gives the year's
+total, `r format(sum(by_status$records), big.mark = ",")` records, anyone can
+subtract the `r sum(by_status$records >= min_count)` counts shown and find the
+hidden one. Hide a second cell too, or leave the total out, as your protocol
+says; the same goes for a percentage of a known total. Apply the rule last, to
+the tables you will show: inside THIP, keep the full counts for your analysis.
+
+## Credentials stay out of code
+
+Your THIP account and password are yours alone, as THIP's conditions say. The
+database username and password that thipR uses are credentials too, and they
+belong in one place: the settings file that `thip_setup()` writes. Run
+`thip_setup()` once in your THIP account, as [Start
+here](start-here.html#configure-once-connect-each-session) shows. It asks for
+the password in a masked box and saves the connection settings in a file only
+you can read; from then on, `thip_connect()` reads them from there.
+
+- Never type a password into a notebook cell or a script, even for a moment:
+  notebooks keep their cells and output, and code gets copied.
+- Keep the settings file, `.Renviron` in your home folder, out of repositories
+  and shared folders. It is plain text, protected only by its file permissions.
+- Do not print the settings or lend them: a colleague who needs THIP needs
+  their own account.
+
+## thipR only reads
+
+thipR connects read-only. Every query it sends asks the database for read-only
+access, and it never creates, changes or deletes a table. When it needs your
+people on the database, as `thip_window()` does, it sends them inside the query
+instead of writing a table ([Look back and follow
+up](look-back-follow-up.html#the-round-trip)). Keep your own code the same way:
+when dplyr suggests its `copy` argument to join a data frame to a database
+table, use `thip_window()` instead ([Working with a database from
+R](database-from-r.html#join-tables-on-the-same-connection)).
+
+## Decisions that are yours
+
+thipR gives you tools, not study decisions. It does not choose:
+
+- **Clinical definitions:** which codes mean appendicitis or diabetes. The code
+  lists in this course illustrate the methods; they are not validated
+  definitions.
+- **Eligibility:** who can enter the study, from which dates and at which ages.
+- **Duplicates and damaged values:** what to do with repeated records, dates
+  that cannot be read and impossible values ([Check before you
+  trust](data-checks.html)).
+
+These are your protocol's decisions. Make them before you look at results,
+write them down with the code lists you used and where they came from, and
+report them with your findings.
+
+## The example is not evidence
+
+The example database that comes with thipR is invented: its people, records and
+rates were made up to teach the methods ([Meet the THIP
+data](meet-the-data.html)). Never present its numbers, such as the readmission
+percentages in the [Worked example](getting-started.html), as findings about
+Thai hospitals or patients, and do not use them to plan a study. When you teach
+with it, say that the data are invented.
+
+## Report problems
+
+For a problem with thipR or with these guides, open an issue on
+[GitHub](https://github.com/Songyosr/thipR/issues). Issues are public, so leave
+out passwords and other credentials, THIP's host names and addresses, and
+results from real THIP data, counts included. Show the problem on the example
+database instead: `thip_connect_example()` runs the same code, so you can share
+the code and its output. For a problem with your THIP account or with THIP's
+data, contact the THIP team.
+
+## In short
+
+- THIP is a data warehouse for research. The data stay their owner's, your
+  account is yours alone, downloads need your institution's ethics approval,
+  and THIP may cancel access used outside its conditions.
+- Work inside THIP, and take out only what your protocol allows: usually
+  aggregate tables.
+- Hide counts below your protocol's threshold, and anything that would let
+  someone work them out.
+- Keep credentials in the file `thip_setup()` writes, never in code or
+  notebooks.
+- thipR only reads. Clinical definitions, eligibility and duplicates are your
+  protocol's decisions.
+- The example's numbers are invented: never present them as findings.
+- Report thipR problems on GitHub, without credentials, addresses or results
+  from real data.
+
+This is the last guide in the course. To go back to the start, see [Meet the
+THIP data](meet-the-data.html); to set up access on THIP, see [Start
+here](start-here.html).
+
+```{r disconnect, include = FALSE}
+DBI::dbDisconnect(con)
+```

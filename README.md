@@ -78,13 +78,15 @@ The guides form a short course. They run on an invented example database
 | [Working with a database from R](https://songyosr.github.io/thipR/articles/database-from-r.html) | Where your code runs, and when data come into R |
 | [From question to cohort](https://songyosr.github.io/thipR/articles/question-to-cohort.html) | Turn a research question into one entry per person |
 | [Look back and follow up](https://songyosr.github.io/thipR/articles/look-back-follow-up.html) | Fetch each person's history and outcomes around their entry |
-| [Flag conditions locally](https://songyosr.github.io/thipR/articles/condition-flags.html) | Use custom code lists and exact or prefix matching |
-| [Worked cohort example](https://songyosr.github.io/thipR/articles/getting-started.html) | Run a small end-to-end analysis |
+| [Flag conditions](https://songyosr.github.io/thipR/articles/condition-flags.html) | Turn reviewed code lists into flags per person or entry |
+| [Worked example](https://songyosr.github.io/thipR/articles/getting-started.html) | The whole course in one short analysis |
+| [Check before you trust](https://songyosr.github.io/thipR/articles/data-checks.html) | Checks to run on the data before relying on it |
+| [Using THIP data responsibly](https://songyosr.github.io/thipR/articles/responsible-use.html) | What THIP's conditions and good practice ask of you |
 
 The [function reference](https://songyosr.github.io/thipR/reference/index.html)
 describes arguments and return values. [News](https://songyosr.github.io/thipR/news/index.html)
 records release and development changes. Installed builds containing vignettes
-also support `vignette("getting-started", package = "thipR")`.
+also support `vignette("start-here", package = "thipR")`.
 
 ## Scope
 

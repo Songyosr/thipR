@@ -436,7 +436,8 @@ ep$flaw[dot] <- "dot_sdx"
 # Teaching tweak: enough appendicitis patients with diabetes for the worked
 # example's comparison. It uses its own seed and then restores the main random
 # stream, so the rest of the data is unchanged: it only adds a diabetes code to
-# every record of 32 more appendicitis patients, 6 of them readmitted.
+# every record of 32 more appendicitis patients, 6 of them readmitted, and
+# leaves a few of them findable only by looking back a year.
 main_stream <- .Random.seed
 set.seed(20261022)
 readm <- seq_along(a) %in% ra
@@ -448,6 +449,20 @@ for (p in new_dm) {
     j <- match("", sdx_mat[r, ])
     if (!is.na(j)) sdx_mat[r, j] <- code
   }
+}
+# Surgical stays often leave chronic conditions unrecorded: for all but one of
+# the people with diabetes recorded in the year before their appendicitis
+# admission, drop it from that admission, so only looking back finds it.
+is_dm <- function(x) grepl("^E1[0-4]", x)
+looked_back <- Filter(function(p) {
+  entry <- which(ep$person == p & ep$kind == "appendix")
+  before <- which(ep$person == p & ep$adm >= ep$adm[entry] - 365 & ep$adm < ep$adm[entry])
+  any(is_dm(sdx_mat[before, ])) && any(is_dm(sdx_mat[entry, ]))
+}, a)
+for (p in looked_back[-1]) {
+  entry <- which(ep$person == p & ep$kind == "appendix")
+  keep <- sdx_mat[entry, nzchar(sdx_mat[entry, ]) & !is_dm(sdx_mat[entry, ])]
+  sdx_mat[entry, ] <- c(keep, rep("", 20L - length(keep)))
 }
 assign(".Random.seed", main_stream, envir = globalenv())
 

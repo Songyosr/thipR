@@ -17,8 +17,10 @@ along before you have THIP access.
 | [Working with a database from R](database-from-r.html) | Where your code runs, and when data come into R |
 | [From question to cohort](question-to-cohort.html) | Turn a research question into one entry per person |
 | [Look back and follow up](look-back-follow-up.html) | Fetch each person's history and outcomes around their entry |
-| [Flag conditions locally](condition-flags.html) | Custom code lists, exact or prefix matching |
-| [Worked cohort example](getting-started.html) | A short end-to-end analysis |
+| [Flag conditions](condition-flags.html) | Turn reviewed code lists into flags per person or entry |
+| [Worked example](getting-started.html) | The whole course in one short analysis |
+| [Check before you trust](data-checks.html) | Checks to run on the data before relying on it |
+| [Using THIP data responsibly](responsible-use.html) | What THIP's conditions and good practice ask of you |
 
 The remote snippets below are not executed during package builds. Run them in
 your authorized THIP R session. Column-name arguments use strings such as
@@ -60,7 +62,8 @@ release, for example `pak::pak("Songyosr/thipR@v0.2.1")`.
 
 Restart an existing R kernel after upgrading an already-loaded package.
 A source archive (`.tar.gz`) is another installation option; builds that include
-vignettes support `vignette("getting-started", package = "thipR")` locally.
+vignettes support `vignette("start-here", package = "thipR")` locally. The course
+guides are on the website.
 
 ## Configure once, connect each session
 

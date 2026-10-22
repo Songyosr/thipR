@@ -1,0 +1,244 @@
+---
+title: "Worked example: appendicitis and readmission"
+description: >
+  The whole course in one short, runnable script, from the yearly tables to
+  readmission by diabetes.
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+# Keep the build machine out of printed query headers (load duckdb first, as it
+# registers its own description when it loads).
+loadNamespace("duckdb")
+registerS3method("db_connection_describe", "duckdb_connection",
+                 function(con, ...) "example database", envir = asNamespace("dbplyr"))
+```
+
+This guide answers the course's question in one short script:
+
+> Among people admitted with appendicitis, how many are readmitted within 30
+> days of discharge, and is that more common in people with diabetes?
+
+The script repeats the earlier guides' steps, so its numbers match theirs.
+If you have done those guides, here are all their steps together. If you start
+here, read for the shape of the analysis, and use the links to go back to the
+guide behind any step:
+
+1. Connect to the database: [Meet the THIP data](meet-the-data.html).
+2. Stack the yearly tables and convert their dates with `thip_table()`:
+   [From question to cohort](question-to-cohort.html#stack-the-tables-convert-the-dates).
+3. Audit the dates with `thip_date_audit()`:
+   [From question to cohort](question-to-cohort.html#audit-the-dates-before-you-filter).
+4. Select the candidate records on the database with `thip_filter_icd()`:
+   [From question to cohort](question-to-cohort.html#select-the-candidate-records).
+5. Choose one entry per person in R:
+   [From question to cohort](question-to-cohort.html#choose-one-entry-per-person).
+6. Fetch the follow-up with `thip_window()` and mark readmissions:
+   [Look back and follow up](look-back-follow-up.html#plan-the-follow-up).
+7. Fetch the look-back history:
+   [Look back and follow up](look-back-follow-up.html#look-back-a-year).
+8. Flag diabetes with `icd_flag()`: [Flag conditions](condition-flags.html).
+9. Summarise readmission by diabetes: this page.
+
+As in every guide, the code runs on the example database that comes with
+thipR. On THIP, connect with `thip_connect()` instead, after the one-time setup
+in [Start here](start-here.html), and the same code runs there.
+
+## Connect, stack and audit
+
+Load the packages, connect, stack the three yearly tables with their dates
+converted, and audit the dates:
+
+```{r stack}
+library(thipR)
+library(dplyr, warn.conflicts = FALSE)
+
+# 1. Connect (on THIP: con <- thip_connect())
+con <- thip_connect_example()
+
+# 2. Stack the yearly tables and convert the dates
+admissions <- thip_table(
+  con, tables = c("nhso2565", "nhso2566", "nhso2567"), .id = "source_table",
+  dates = c(adm = "dateadm", dsc = "datedsc"),
+  date_format = c(adm = "%Y%m%d", dsc = "%Y%m%d")
+)
+
+# 3. Audit the dates
+date_audit <- admissions |>
+  thip_date_audit(columns = c(adm = "dateadm", dsc = "datedsc"))
+knitr::kable(date_audit)
+```
+
+Every admission date was read;
+`r date_audit$n_failed[date_audit$field == "dsc"]` discharge dates failed and
+`r date_audit$n_blank[date_audit$field == "dsc"]` is blank. Step 5 keeps only
+candidates with a discharge date, so none of these records can become an entry.
+
+## Candidates and entries
+
+Select the study period's appendicitis admissions on the database, bring them
+into R, and keep each person's first one with a discharge date:
+
+```{r entries}
+# 4. Select the candidate records on the database, then collect them
+candidates <- admissions |>
+  filter(adm >= as.Date("2021-10-01"), adm <= as.Date("2024-08-31")) |>
+  thip_filter_icd(codes = "K35", cols = "pdx", match = "prefix") |>
+  collect()
+
+# 5. Choose one entry per person in R: the first with a discharge date
+entries <- candidates |>
+  filter(!is.na(dsc)) |>
+  arrange(pid, adm, tran_id) |>
+  distinct(pid, .keep_all = TRUE) |>
+  select(pid, entry_id = tran_id, adm_date = adm, dsc_date = dsc)
+```
+
+That gives `r nrow(entries)` entries from `r n_distinct(entries$pid)` people,
+each with an `entry_id`, an admission date and a discharge date.
+
+## Follow up and look back
+
+Fetch each entry's admissions on days 1 to 30 after discharge and in the 365
+days before admission, and mark the entries that were readmitted:
+
+```{r windows}
+# 6. Follow-up: admissions on days 1 to 30 after discharge
+followup <- admissions |>
+  select(pid, tran_id, source_table, adm, dsc, pdx) |>
+  thip_window(entries, date = "adm", index = "dsc_date", window = c(1L, 31L)) |>
+  collect()
+
+readmit <- entries |>
+  left_join(count(followup, entry_id, name = "readmissions"), by = "entry_id") |>
+  mutate(readmissions = coalesce(readmissions, 0L),
+         readmitted = readmissions > 0)
+
+# 7. Look-back: admissions in the 365 days before admission
+history <- admissions |>
+  select(pid, tran_id, source_table, adm, dsc, pdx, num_range("sdx", 1:20)) |>
+  thip_window(entries, date = "adm", index = "adm_date", window = c(-365L, 0L)) |>
+  collect()
+```
+
+`r sum(readmit$readmitted)` of the `r nrow(readmit)` entries were readmitted
+within 30 days; `readmit` starts from `entries`, so it keeps the other
+`r sum(!readmit$readmitted)` too. `history` leaves out the entry admission
+itself, so step 8 takes that admission's codes from `candidates`.
+
+## Flag diabetes
+
+Flag each entry whose own admission, or an admission in its `history`, has a
+code starting with E10 to E14 in any diagnosis column (`match = "prefix"`):
+
+```{r flags}
+# 8. Flag diabetes on each entry's own admission and in its history
+entry_records <- candidates |>
+  filter(tran_id %in% entries$entry_id) |>
+  mutate(entry_id = tran_id)
+
+flags <- bind_rows(entry_records, history) |>
+  icd_flag(conditions = list(diabetes = paste0("E", 10:14)), id = "entry_id",
+           cols = c("pdx", paste0("sdx", 1:20)), match = "prefix") |>
+  mutate(diabetes = coalesce(diabetes, FALSE))
+```
+
+[Flag conditions](condition-flags.html) flags the two periods separately to show
+what looking back adds; one call over both gives the same answer, and
+`coalesce()` reads "no codes recorded" (`NA`) as no diabetes, as that guide does.
+
+Of the `r nrow(flags)` entries, `r sum(flags$diabetes)` have a diabetes code.
+The flag looks only at the entry admission and the year before it, never at
+the follow-up, and `FALSE` means no code was recorded there, not that the
+person has no diabetes.
+
+## Readmission by diabetes
+
+Join the flags onto `readmit`, keeping every entry, and count readmissions with
+and without diabetes:
+
+```{r summary}
+# 9. Summarise readmission by diabetes, keeping every entry
+results <- readmit |>
+  left_join(flags, by = "entry_id")
+
+summary_table <- results |>
+  group_by(diabetes) |>
+  summarise(entries = n(), readmitted = sum(readmitted)) |>
+  mutate(percent = round(100 * readmitted / entries, 1))
+
+knitr::kable(summary_table)
+```
+
+The two rows add up to all `r sum(summary_table$entries)` entries. In the
+example, readmission is more common with diabetes:
+`r summary_table$percent[summary_table$diabetes]`% against
+`r summary_table$percent[!summary_table$diabetes]`% without.
+
+## What leaves R
+
+Write the summary table, the only thing you take out of R, to a file; here a
+temporary one:
+
+```{r export}
+summary_file <- tempfile(fileext = ".csv")
+write.csv(summary_table, summary_file, row.names = FALSE)
+writeLines(readLines(summary_file))
+```
+
+The file holds counts and percentages for two groups, nothing about any one
+person. Everything else stays in your R session, which on THIP runs inside your
+THIP account: the records that came in at the three `collect()`s
+(`candidates`, `followup` and `history`) and the tables made from them.
+
+## What a real study adds
+
+The example's records are invented ([Meet the THIP data](meet-the-data.html)),
+so its numbers say nothing about real readmission rates. A study built on this
+script adds:
+
+- **A protocol fixed in advance:** the question, study period, code lists,
+  windows and analysis, written down before you run the script on THIP. The
+  example database lets you write and test every step first.
+- **Reviewed code lists:** K35 and E10 to E14 illustrate the method and are not
+  validated definitions. Use lists reviewed for your question, and look at
+  which codes occur in your records.
+- **Eligibility rules**, such as a minimum age added to the `filter()` in step 4
+  ([From question to cohort](question-to-cohort.html#other-eligibility-rules)),
+  or leaving out entry admissions that ended in death, since those people
+  cannot be readmitted.
+- **Confidence intervals and adjustment:** an interval for each percentage, for
+  example from `binom.test()`, and a model that adjusts for age and sex, such
+  as logistic regression with `glm(..., family = binomial)`, after keeping
+  `age_y` and `sex` in step 5's `select()`.
+- **Readmissions counted once per entry:** the table counts entries readmitted
+  at least once, not readmission records. To report how many readmissions there
+  were, first check that no record came back twice for an entry, as in
+  [Look back and follow up](look-back-follow-up.html#count-readmissions-per-entry).
+- **Checks on the data first**, from [Check before you trust](data-checks.html).
+  One matters here already: part of the look-back year of the
+  `r sum(entries$adm_date < as.Date("2022-10-01"))` entries admitted in fiscal
+  year 2565 falls before the first table you stacked, so it was never searched
+  ([Look back and follow up](look-back-follow-up.html#windows-and-the-years-you-stacked)
+  gives two fixes).
+- **Your project's rule for small counts**, applied to every number in the
+  summary before it leaves THIP; see
+  [Using THIP data responsibly](responsible-use.html).
+
+## Back to the guides
+
+- [Meet the THIP data](meet-the-data.html): the yearly tables, what one row is,
+  and the columns used here.
+- [Working with a database from R](database-from-r.html): what runs on the
+  database, and what comes into R.
+- [From question to cohort](question-to-cohort.html): steps 2 to 5, with a
+  count of records and people after each.
+- [Look back and follow up](look-back-follow-up.html): steps 6 and 7.
+- [Flag conditions](condition-flags.html): step 8.
+
+Next: [Check before you trust](data-checks.html), the checks to run on the data
+before you rely on a result like this one.
+
+```{r disconnect, include = FALSE}
+DBI::dbDisconnect(con)
+```

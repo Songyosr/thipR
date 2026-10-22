@@ -1,0 +1,347 @@
+---
+title: "Flag conditions"
+description: >
+  Turn reviewed lists of diagnosis codes into TRUE, FALSE or NA for each entry,
+  and flag diabetes on the entry admission or in the year before.
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+# Keep the build machine out of printed query headers (load duckdb first, as it
+# registers its own description when it loads).
+loadNamespace("duckdb")
+registerS3method("db_connection_describe", "duckdb_connection",
+                 function(con, ...) "example database", envir = asNamespace("dbplyr"))
+```
+
+The running question compares people with and without diabetes. Diabetes can
+be recorded on the entry admission, whose codes are in `candidates`, or on the
+admissions in the year before, which [Look back and follow
+up](look-back-follow-up.html) fetched into `history`. This guide turns those
+records into one answer per entry.
+
+A condition, in this course, is a list of codes you have reviewed. `icd_flag()`
+takes records and one or more lists, and gives one row per ID with a column of
+`TRUE`, `FALSE` or `NA` for each list:
+
+```{r condition-flags, echo = FALSE, results = "asis"}
+# Inline, so the diagram travels with the page and keeps its title and description.
+cat("```{=html}", "<div style=\"margin: 0.5rem 0 1.5rem;\">",
+    readLines("figures/condition-flags.svg"), "</div>", "```", sep = "\n")
+```
+
+Every example runs on the example database of invented records described in
+[Meet the THIP data](meet-the-data.html); on THIP, connect with `thip_connect()`
+instead.
+
+## Rebuild the entries and history
+
+This chunk repeats earlier guides: the recipe of [From question to
+cohort](question-to-cohort.html), then the `history` call of [Look back and
+follow up](look-back-follow-up.html).
+
+```{r rebuild}
+library(thipR)
+library(dplyr, warn.conflicts = FALSE)
+
+con <- thip_connect_example()
+
+admissions <- thip_table(
+  con, tables = c("nhso2565", "nhso2566", "nhso2567"), .id = "source_table",
+  dates = c(adm = "dateadm", dsc = "datedsc"),
+  date_format = c(adm = "%Y%m%d", dsc = "%Y%m%d")
+)
+
+candidates <- admissions |>
+  filter(adm >= as.Date("2021-10-01"), adm <= as.Date("2024-08-31")) |>
+  thip_filter_icd(codes = "K35", cols = "pdx", match = "prefix") |>
+  collect()
+
+entries <- candidates |>
+  filter(!is.na(dsc)) |>
+  arrange(pid, adm, tran_id) |>
+  distinct(pid, .keep_all = TRUE) |>
+  select(pid, entry_id = tran_id, adm_date = adm, dsc_date = dsc)
+
+history <- admissions |>
+  select(pid, tran_id, source_table, adm, dsc, pdx, num_range("sdx", 1:20)) |>
+  thip_window(entries, date = "adm", index = "adm_date", window = c(-365L, 0L)) |>
+  collect()
+```
+
+There are `r nrow(entries)` entries, and `history` holds `r nrow(history)`
+records from the year before them.
+
+## Flag diabetes in each period
+
+In this course, diabetes is any code starting E10 to E14, the diabetes block of
+ICD-10, in any diagnosis position. Write it as a named list, whose name becomes
+the column of answers. The lists in this guide illustrate the method and are
+not validated definitions: review your own, and report them with your methods.
+
+The entry admission is in `candidates`, under its `tran_id`. Keep the
+candidates that became entries, rename `tran_id` to `entry_id` so that both
+periods share one ID, and flag each period in `pdx` and `sdx1` to `sdx20`:
+
+```{r flag}
+dm <- list(diabetes = paste0("E", 10:14))
+dx_cols <- c("pdx", paste0("sdx", 1:20))
+
+entry_admissions <- candidates |>
+  filter(tran_id %in% entries$entry_id) |>
+  rename(entry_id = tran_id)
+
+on_entry <- icd_flag(entry_admissions, dm, id = "entry_id", cols = dx_cols,
+                     match = "prefix")
+in_history <- icd_flag(history, dm, id = "entry_id", cols = dx_cols,
+                       match = "prefix")
+
+glimpse(on_entry)
+glimpse(in_history)
+```
+
+`id` names the column to answer for: `icd_flag()` combines every record with
+the same ID, across rows and the columns in `cols`, into one row of a new table;
+join it back to see other columns. `match = "prefix"` matches every code that
+starts with one on the list ([Exact or prefix](#exact-or-prefix); every
+argument is on [the reference page](../reference/icd_flag.html)).
+
+`in_history` has only `r nrow(in_history)` rows: an entry with no records in the
+year before gets no row. `icd_flag()` reads no dates, so the window you fetched
+decides which records count. `id = "pid"` would pool all of a person's records,
+so keep `entry_id` when a person can have several entries.
+
+## TRUE, FALSE and NA
+
+Each answer takes one of three values:
+
+- `TRUE`: at least one selected code is on the list.
+- `FALSE`: codes were recorded, but none is on the list. No diabetes code was
+  recorded; that is not proof that the person has no diabetes.
+- `NA`: no code was recorded in that period. `icd_flag()` gives `NA` when every
+  selected column of an ID's records is blank or missing; an entry with no
+  records has no row, so it gets `NA` when you join.
+
+To keep every entry, start from `entries` and left-join both results; `suffix`
+names the two `diabetes` columns by period:
+
+```{r by-period}
+by_period <- entries |>
+  select(entry_id) |>
+  left_join(on_entry, by = "entry_id") |>
+  left_join(in_history, by = "entry_id", suffix = c("_entry", "_history"))
+
+count(by_period, diabetes_entry, diabetes_history)
+```
+
+Every entry admission has codes, so `diabetes_entry` is never `NA`; it is `TRUE`
+for `r sum(on_entry$diabetes)` entries. `diabetes_history` is `NA` for the
+`r sum(is.na(by_period$diabetes_history))` entries with no records in the year
+before.
+
+## Combine the periods
+
+This course counts an entry as having diabetes when either period has a code,
+and reads `NA` as "no diabetes code recorded", the same as `FALSE`. In R,
+`FALSE | NA` is `NA`, so `coalesce()` turns `NA` into `FALSE` first:
+
+```{r combine}
+flags <- by_period |>
+  mutate(diabetes = coalesce(diabetes_entry, FALSE) |
+           coalesce(diabetes_history, FALSE)) |>
+  select(entry_id, diabetes)
+
+count(flags, diabetes)
+```
+
+`r sum(flags$diabetes)` entries have diabetes recorded on the entry admission or in
+the year before, and `r sum(!flags$diabetes)` do not. Looking back matters:
+`r sum(by_period$diabetes_history %in% TRUE & !by_period$diabetes_entry)` of them
+have no diabetes code on the entry admission, only on an admission in the year
+before.
+
+Reading `NA` as `FALSE` is a study decision: state it in your methods. Where
+part of an entry's year before lies before the stacked tables ([Look back and
+follow up](look-back-follow-up.html)), `FALSE` means "not recorded in the
+stacked years".
+
+A flag records whether a code appears, not how often. To require a code on two
+admissions, flag each admission (`id = "tran_id"`) and count the matching
+admissions per entry: an admission with two codes on the list is one admission.
+
+## Several lists at once
+
+One call can flag several conditions. Add hypertension (I10 to I15) and chronic
+kidney disease (N18), and count the entry admissions with each:
+
+```{r several}
+conditions <- list(
+  diabetes = paste0("E", 10:14),
+  hypertension = paste0("I", 10:15),
+  ckd = "N18"
+)
+
+several <- icd_flag(entry_admissions, conditions, id = "entry_id",
+                    cols = dx_cols, match = "prefix")
+summarise(several, across(-entry_id, sum))
+```
+
+Each name became a column. Names must be unique and differ from the ID column;
+an empty list, `character(0)`, matches no code.
+
+## Exact or prefix
+
+`match = "exact"`, the default, matches whole codes; `"prefix"` matches every
+code that starts with one on your list. Neither reads a code as a pattern, so a
+wildcard or regular expression is no substitute for a list. The choice matters
+because ICD-10-TM, which Thai hospitals use, adds a fifth character to many
+codes: F10.3, for example, has F10.30 and F10.31 beneath it. An exact list
+written at three or four characters, such as one exported from a tool that
+offers only four, silently misses them. Compare three lists:
+
+```{r exact-prefix}
+e11 <- list(e11 = "E11", e116 = "E116", e119 = "E119")
+
+exact <- icd_flag(entry_admissions, e11, id = "entry_id", cols = dx_cols)
+prefix <- icd_flag(entry_admissions, e11, id = "entry_id", cols = dx_cols,
+                   match = "prefix")
+
+bind_rows(exact = exact, prefix = prefix, .id = "match") |>
+  group_by(match) |>
+  summarise(across(starts_with("e11"), sum))
+```
+
+No entry admission has the bare three-character E11, so exact E11 finds none.
+The five-character E1165 is on `r sum(prefix$e116)` of them: exact E116 misses it
+and prefix E116 finds it. E119 finds `r sum(exact$e119)` either way, because no
+longer code starts with it here. Use `"prefix"` for lists written at three or
+four characters, and `"exact"` when you mean exactly the codes listed.
+
+## Choose the columns
+
+`cols` decides which diagnosis positions count. Every entry admission has
+appendicitis as its principal diagnosis, so `pdx` alone finds no diabetes; the
+secondary diagnoses alone give `NA` to entries with none:
+
+```{r columns}
+icd_flag(entry_admissions, dm, id = "entry_id", cols = "pdx",
+         match = "prefix") |>
+  count(diabetes)
+
+icd_flag(entry_admissions, dm, id = "entry_id", cols = paste0("sdx", 1:20),
+         match = "prefix") |>
+  count(diabetes)
+```
+
+Name the positions in the call, where readers can see them: `pdx` alone asks
+what the admission was for; every position asks what was recorded during it.
+
+## Codes are cleaned first
+
+Before comparing, thipR cleans every code, on your lists and in the records: it
+removes dots, makes letters upper case and trims the spaces around each code.
+`thip_filter_icd()` uses the same rules on the database. Count the records whose
+first secondary diagnosis is exactly E119, then try a carelessly typed list:
+
+```{r cleaned}
+admissions |>
+  thip_filter_icd(codes = "E119", cols = "sdx1") |>
+  count(sdx1) |>
+  arrange(sdx1)
+
+messy <- list(diabetes = c("e11.9", " E11.65 "))
+icd_flag(entry_admissions, messy, id = "entry_id", cols = dx_cols) |>
+  count(diabetes)
+```
+
+One record in the example writes its code with a dot, `E11.9`, and the search
+still finds it. The careless list matches E119 and E1165 and flags the same
+`r sum(on_entry$diabetes)` entry admissions. Counts like the first one also show
+which codes occur, at which lengths and positions: look before you freeze a
+list.
+
+## A quick look with sdx_index
+
+The notebook platform also gives `sdx_index`, a record's secondary diagnoses
+joined into one text ([Meet the THIP data](meet-the-data.html)); in the example,
+spaces separate the codes. Searching it with `grepl()` is a fast way to peek at
+a few codes. Count the entry admissions that each pattern finds:
+
+```{r quick-look}
+sdx_text <- entry_admissions$sdx_index
+patterns <- c("E11", "K35", "E116", "^E11", "(^| )E11", "E11.9", "e11")
+found <- sapply(patterns, function(p) sum(grepl(p, sdx_text)))
+found
+```
+
+`"E11"` works: it finds the same `r found[["E11"]]` entry admissions as
+`icd_flag()`. The other patterns show the traps:
+
+- **It leaves out `pdx`.** `"K35"` finds nothing, although every entry
+  admission has appendicitis there.
+- **It matches part of a code.** `"E116"` finds E1165: right for a prefix,
+  wrong for an exact code. It also needs a start-of-code anchor: `^` is the
+  start of the whole text, so `"^E11"` checks only the first code and finds
+  `r found[["^E11"]]`, while `"(^| )E11"`, at the start or after a space, finds
+  all `r found[["(^| )E11"]]`.
+- **A dot means any character.** `"E11.9"` asks for five characters and misses
+  every E119, so a code list written with dots misbehaves.
+- **Case matters.** `"e11"` finds nothing.
+- **It answers per record.** You still combine each entry's records, the year
+  before included, and the `r sum(sdx_text == "")` blank values give `FALSE`,
+  not `NA`.
+
+So `grepl()` on `sdx_index` is fine for a quick look at a few codes. For flags
+you analyse, use `icd_flag()`: it searches `pdx` too, matches whole codes or
+prefixes, cleans the codes, combines records per ID, keeps `NA` apart and takes
+several lists at once.
+
+## On the database or in R
+
+`thip_filter_icd()`, from [From question to cohort](question-to-cohort.html),
+matches codes by the same rules but filters records on the database: a query
+and one vector of codes go in, and a query of the matching records, unchanged,
+comes out. `icd_flag()` answers per ID in R, from collected records and named
+lists. It refuses a query rather than collecting it for you, so `collect()`
+always marks where records come into R.
+
+Neither function expands notation. A range such as `"Q20-Q26"`, a wildcard such
+as `%` or `_`, a regular expression, or several codes in one string separated by
+commas or spaces stops with an error instead of quietly matching nothing. (`*`,
+`+` and `/` stay ordinary characters, for sources that write dagger and
+asterisk codes.) Write the codes out:
+
+```{r range}
+paste0("Q", 20:26)
+```
+
+With `match = "prefix"`, it covers Q20 to Q26 and every code beneath them.
+
+## The flags table
+
+`flags` is what this guide built: one row per entry, with `entry_id` and
+`diabetes`, `TRUE` or `FALSE` for every entry:
+
+```{r flags-table}
+flags
+```
+
+## In short
+
+- A condition is a named list of reviewed codes. `icd_flag()` combines each
+  ID's records, rows and columns, into `TRUE`, `FALSE` or `NA`; it reads no dates.
+- An entry with no records gets no row: start from `entries`, left-join, and
+  decide what `NA` means. This course reads it as `FALSE`.
+- `"exact"` is the default; use `"prefix"` for lists written at three or four
+  characters, because ICD-10-TM adds a fifth. Name the positions in `cols`.
+- Dots, case and surrounding spaces are cleaned; ranges and wildcards stop with
+  an error, so write the codes out.
+- `grepl()` on `sdx_index` is a quick look, not a flag. `thip_filter_icd()`
+  filters on the database; `icd_flag()` flags collected records in R.
+
+Next: [Worked example](getting-started.html) joins `flags` to the readmissions
+and compares people with and without diabetes.
+
+```{r disconnect, include = FALSE}
+DBI::dbDisconnect(con)
+```
