@@ -4,7 +4,7 @@ Version: 0.3.0.9000
 Authors@R: person("Songyos", "Rajborirug", email = "songyos.r@psu.ac.th",
     role = c("aut", "cre"))
 Description: A small connection and discovery layer over 'DBI',
-    'ClickHouseHTTP' and 'dbplyr' for THIP notebook users. Applies read-only
+    'ADBC' and 'dbplyr' for THIP notebook users. Applies read-only
     request settings and configurable limits, provides lazy multi-table access,
     and supports metadata discovery without embedding platform credentials.
     Flags user-defined ICD code sets using exact or prefix matching, with
@@ -14,9 +14,9 @@ Description: A small connection and discovery layer over 'DBI',
 License: GPL-3
 Encoding: UTF-8
 Depends: R (>= 4.1)
-Imports: ClickHouseHTTP (>= 1.1.2), DBI, dbplyr (>= 2.0.0), dplyr,
+Imports: adbi (>= 0.1.3), adbcdrivermanager (>= 0.24.0.3), DBI, dbplyr (>= 2.0.0), dplyr,
     methods, utils, stats, Matrix, data.table
-Suggests: testthat (>= 3.0.0), knitr, rmarkdown, tibble, askpass, getPass, withr,
+Suggests: ClickHouseHTTP (>= 1.1.2), testthat (>= 3.0.0), knitr, rmarkdown, tibble, askpass, getPass, withr,
     duckdb (>= 1.3.0)
 Config/testthat/edition: 3
 VignetteBuilder: knitr

@@ -13,7 +13,9 @@ thip_setup(
   scheme = Sys.getenv("THIP_DB_SCHEME", "http"),
   overwrite = FALSE,
   verify = TRUE,
-  path = Sys.getenv("R_ENVIRON_USER", "~/.Renviron")
+  path = Sys.getenv("R_ENVIRON_USER", "~/.Renviron"),
+  backend = c("http", "adbc"),
+  driver = NULL
 )
 }
 \arguments{
@@ -36,6 +38,13 @@ thip_setup(
 \item{path}{User environment file. Defaults to \code{R_ENVIRON_USER} when set,
 otherwise \verb{~/.Renviron}. Its parent directory must exist. Keep it outside
 project repositories. A custom path needs corresponding R startup setup.}
+
+\item{backend}{Connection backend. The existing HTTP backend remains the
+default; use `"adbc"` for the experimental backend without the R arrow package.}
+
+\item{driver}{ADBC driver name, manifest or shared-library path, or a directory
+containing `clickhouse.toml`. NULL finds the driver installed by
+[thip_install_driver()] or a platform-provided `clickhouse` driver.}
 }
 \value{
 The saved file path, invisibly; never the credentials or a connection.
@@ -105,6 +114,11 @@ placeholders in angle brackets:
    "Input unavailable or cancelled" \tab A prompt was cancelled or could not be shown, for example outside an interactive notebook cell. Nothing was saved; run setup in a notebook cell. \cr
    No masked password box outside Jupyter \tab In RStudio or a terminal, install the \code{askpass} package for masked entry. \cr
 }
+
+
+With \code{backend = "adbc"} and verification enabled, setup checks that the driver
+can be loaded before prompting for credentials. It never downloads a driver;
+run \code{\link[=thip_install_driver]{thip_install_driver()}} separately if the platform does not supply one.
 }
 
 \examples{

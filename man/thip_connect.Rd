@@ -13,7 +13,9 @@ thip_connect(
   scheme = Sys.getenv("THIP_DB_SCHEME", "http"),
   max_seconds = NULL,
   max_threads = 2L,
-  max_rows = NULL
+  max_rows = NULL,
+  backend = c("http", "adbc"),
+  driver = NULL
 )
 }
 \arguments{
@@ -35,9 +37,16 @@ thip_connect(
 
 \item{max_rows}{Server result row limit; NULL inherits the platform setting.
 Explicit limits must be positive; overflow raises an error, never truncation.}
+
+\item{backend}{Connection backend. The existing HTTP backend remains the
+default; use `"adbc"` for the experimental backend without the R arrow package.}
+
+\item{driver}{ADBC driver name, manifest or shared-library path, or a directory
+containing `clickhouse.toml`. NULL finds the driver installed by
+[thip_install_driver()] or a platform-provided `clickhouse` driver.}
 }
 \value{
-A verified ClickHouseHTTP DBI connection.
+A verified DBI connection.
 }
 \description{
 Configuration is read from the remote R process environment by default.
@@ -52,14 +61,21 @@ limits complement, rather than replace,
 operator-provisioned read-only database permissions. Do not alter the
 returned object's slots or use SQL to override these settings.
 
-The returned object is a genuine `ClickHouseHTTPConnection`, usable with
-`DBI::dbGetQuery()` and `dplyr::tbl()`. Connection setup uses the driver's
+Both backends support `DBI::dbGetQuery()` and `dplyr::tbl()`.
+The HTTP backend returns a `ClickHouseHTTPConnection`. Its setup uses the driver's
 exported connection class because its `dbConnect()` method issues USE and
 SET statements. This factory sends SELECT only; all query transport, result
 decoding and dbplyr translation remain in the upstream driver. Tested with
 ClickHouseHTTP 1.1.2: older versions are refused, a newer version that changes
 the connection structure stops with a clear message, and other newer versions
 warn once per session.
+
+The experimental ADBC backend wraps adbi and a prebuilt ClickHouse driver.
+It accepts immediate SELECT/WITH queries, without prepared parameters. It
+returns signed 64-bit integers as text and rejects unsigned 64-bit results
+at or above 2^53; select `toString(column)` for exact values. Use
+[thip_table()] for Date32/DateTime64 conversions; raw legacy Date/DateTime
+fields may arrive as numbers. See [thip_install_driver()] for installation.
 }
 \examples{
 \dontrun{

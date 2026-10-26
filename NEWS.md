@@ -1,5 +1,12 @@
 # thipR (development version)
 
+- Experimental ADBC backend (`backend = "adbc"`) with required R dependencies
+  installed automatically and no mandatory R arrow dependency. ClickHouseHTTP
+  is now optional; the HTTP connection default is retained for compatibility.
+- New `thip_install_driver()` bootstraps a prebuilt ClickHouse ADBC driver into a
+  user-data folder, accepts a custom `path`, and reuses working installations.
+  This interim helper leaves package libraries and startup files unchanged.
+
 - New `thip_source_summary()`: one row per source table with records, people,
   first and last date, months with records against months spanned, missing
   dates and repeated record keys, from a lazy table or a data frame.

@@ -29,37 +29,63 @@ inside your THIP account, so run those steps there.
 
 ## Install or load thipR
 
-If thipR is already installed, use `library(thipR)` and continue to configuration
-below. On your own computer, install it like any other package:
-
-```{r install-local, eval=FALSE}
-install.packages("pak")  # Once, if needed
-pak::pak("Songyosr/thipR")
-```
-
-**In a THIP notebook**, install into R's standard personal library in your home
-folder, which is kept between sessions. R defines this library but does not
-create the folder, so create it once first:
+Install from GitHub in R. The required R dependencies install automatically:
 
 ```{r install-thip, eval=FALSE}
-# Once per THIP account
-lib <- Sys.getenv("R_LIBS_USER")
-dir.create(lib, recursive = TRUE, showWarnings = FALSE)
-.libPaths(c(lib, .libPaths()))  # First session only
-install.packages("pak")
-pak::pak("Songyosr/thipR")
+install.packages("remotes")  # Once, if needed
+remotes::install_github("Songyosr/thipR")
+thipR::thip_install_driver()
 library(thipR)
 ```
 
-From then on R finds the folder automatically at start-up, so later sessions
-need only `library(thipR)`. If you installed an earlier version into
-`~/R/thipR-library`, reinstall with the lines above; you can then delete that folder.
+`thip_install_driver()` is an **interim bootstrap** for platforms that do not yet
+supply the ClickHouse ADBC driver. It downloads a prebuilt driver, with signature
+verification, and needs an existing `dbc` executable or Python 3 with venv and pip
+to bootstrap one. It does not require the R arrow package or an Arrow C++ build.
+The smaller R dependencies may still need standard compilation tools when
+installed from source.
 
-Installing thipR does not grant THIP database access. Installation needs network
-access and package dependencies. The database driver, ClickHouseHTTP, installs
-automatically; thipR is tested with version 1.1.2 and warns once if a newer,
-untested version is installed. For a reproducible study, install a tested
-release, for example `pak::pak("Songyosr/thipR@v0.3.0")`.
+The default destination is `file.path(tools::R_user_dir("thipR", "data"), "adbc")`,
+a user-data folder normally under your home directory. Re-running the helper
+reuses a working driver without upgrading it. If the platform supplies a driver,
+skip the helper. Its location follows the upstream
+[dbc driver installation rules](https://docs.columnar.tech/dbc/guides/installing/)
+when using a platform installation.
+
+For a custom destination:
+
+```{r driver-location, eval=FALSE}
+thip_install_driver(path = "~/my-drivers")
+# Use this folder explicitly in later sessions:
+con <- thip_connect(backend = "adbc", driver = "~/my-drivers")
+```
+
+The helper is temporary as a setup workaround; the installed files are not
+session-temporary. They survive only while the chosen folder is preserved.
+Confirm persistent storage with your platform team, especially for server
+rebuilds. The helper does not edit `.libPaths()`, `.Renviron` or `.Rprofile`;
+R package library configuration is a separate platform concern.
+
+The ADBC backend is experimental and selected with `backend = "adbc"` in setup
+and connections. Setup checks for the driver before asking for credentials and
+prints the installation command if it is missing; it never downloads drivers.
+SELECT/WITH queries run immediately; prepared parameters are
+not supported. Signed 64-bit integers are returned as text. Unsigned 64-bit
+values at or above 2^53 raise an error; select `toString(column)` for exact values.
+Use `thip_table()` date conversions (Date32/DateTime64); raw legacy ClickHouse
+Date/DateTime fields may be returned as numbers by the driver.
+
+The existing HTTP backend remains the default for compatibility. To use it,
+install the optional dependency separately:
+
+```{r optional-http, eval=FALSE}
+install.packages("ClickHouseHTTP")  # May also install R arrow
+con <- thip_connect(backend = "http")
+```
+
+Installing thipR does not grant THIP database access. Credentials come from the
+platform. For a fixed release use `remotes::install_github("Songyosr/thipR@v0.3.0")`;
+that older release uses ClickHouseHTTP and does not include the ADBC helper.
 
 Restart an existing R kernel after upgrading an already-loaded package.
 A source archive (`.tar.gz`) is another installation option; builds that include
@@ -70,7 +96,7 @@ guides are on the website.
 
 ```{r configure, eval=FALSE}
 library(thipR)
-thip_setup()
+thip_setup(backend = "adbc")
 ```
 
 Run this once, in a notebook cell inside your THIP account. You will see, in order:
@@ -84,7 +110,7 @@ Run this once, in a notebook cell inside your THIP account. You will see, in ord
    permissions and loaded in this session."
 
 ```
-thip_setup()
+thip_setup(backend = "adbc")
 #> Database host: <host provided by the THIP team>
 #> Database username: <your database username>
 #> Database password: (masked box)
@@ -93,7 +119,7 @@ thip_setup()
 
 Setup saves six `THIP_DB_*` lines to your `~/.Renviron` with owner-only
 permissions. In later sessions, call `thip_connect()` only. If the check fails,
-nothing is saved and you can simply run `thip_setup()` again.
+nothing is saved and you can simply run `thip_setup(backend = "adbc")` again.
 
 | Message or symptom | Meaning and what to do |
 |---|---|
@@ -111,7 +137,7 @@ Jupyter API token is not used by thipR.
 ```{r connect, eval=FALSE}
 library(thipR)
 library(dplyr)
-con <- thip_connect()
+con <- thip_connect(backend = "adbc")
 thip_tables(con)
 thip_columns(con, "nhso2568")
 ```
