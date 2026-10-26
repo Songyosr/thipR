@@ -29,6 +29,11 @@ inside your THIP account, so run those steps there.
 
 ## Install or load thipR
 
+> **Temporary setup guidance — update to come.** The ADBC backend is experimental.
+> For now, install the driver separately with `thip_install_driver()` as shown
+> below. These instructions will be updated as the installation workflow is
+> refined. The helper can be skipped when the platform supplies the driver.
+
 Install from GitHub in R. The required R dependencies install automatically:
 
 ```{r install-thip, eval=FALSE}
@@ -118,12 +123,13 @@ thip_setup(backend = "adbc")
 ```
 
 Setup saves six `THIP_DB_*` lines to your `~/.Renviron` with owner-only
-permissions. In later sessions, call `thip_connect()` only. If the check fails,
+permissions. In later sessions, call `thip_connect(backend = "adbc")` only. If the check fails,
 nothing is saved and you can simply run `thip_setup(backend = "adbc")` again.
 
 | Message or symptom | Meaning and what to do |
 |---|---|
-| "THIP configuration already exists" | Setup was done before. Use `thip_connect()`, or `thip_setup(overwrite = TRUE)` to replace the saved values. |
+| "THIP configuration already exists" | Setup was done before. Use `thip_connect(backend = "adbc")`, or `thip_setup(backend = "adbc", overwrite = TRUE)` to replace the saved values. |
+| "Cannot load the ClickHouse ADBC driver" | Run `thip_install_driver()` separately, then retry setup. For a custom folder, pass the same `driver` argument to setup and connections. |
 | "THIP connection verification failed" | The host, username or password is wrong, or the database is unreachable. Nothing was saved; run setup again. |
 | "host must be a hostname without a URL, path or credentials" | Enter only the host name, without `http://`, a port or a path. |
 | "Input unavailable or cancelled" | A prompt was cancelled or could not be shown. Run setup in an interactive notebook cell. |
@@ -153,6 +159,22 @@ your code runs and when data come into R.
 ```{r disconnect, eval=FALSE}
 DBI::dbDisconnect(con)
 ```
+
+## Check the installation after restarting R
+
+After disconnecting, restart R and run this small query without reinstalling
+the package or running the driver helper. It does not read stored records:
+
+```{r check-installation, eval=FALSE}
+con <- thipR::thip_connect(backend = "adbc")
+DBI::dbGetQuery(con, "SELECT 1 AS ok")  # Expect one row: ok = 1
+DBI::dbDisconnect(con)
+```
+
+This checks reuse in a new R session. A full notebook server restart or rebuild
+is a separate persistence test: the package library and driver folder both need
+to remain available. For a custom driver folder, include
+`driver = "~/my-drivers"` in each connection call.
 
 Next: [Meet the THIP data](https://songyosr.github.io/thipR/articles/meet-the-data.html)
 starts the course.
