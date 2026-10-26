@@ -8,20 +8,32 @@ analyse them in R. Local condition flags and time-window examples also work
 with synthetic data without a database connection.
 
 **Status:** early public release. Interfaces may still change before
-1.0. The live backend is tested with ClickHouseHTTP 1.1.2.
+1.0. An experimental ADBC backend avoids the R arrow dependency;
+the existing HTTP backend supports ClickHouseHTTP 1.1.2.
 
 ## Installation
 
-Install from GitHub:
+Install from GitHub in R:
 
 ```r
-install.packages("pak")  # Once, if needed
-pak::pak("Songyosr/thipR")
+install.packages("remotes")  # Once, if needed
+remotes::install_github("Songyosr/thipR")
+thipR::thip_install_driver()  # Once, if the platform has no ADBC driver
 ```
 
-In a THIP notebook, create R's personal library once first; see
-[Start here](https://songyosr.github.io/thipR/articles/start-here.html) for the
-THIP installation steps and one-time database setup.
+The driver helper is an **interim setup step** until the platform supplies the
+ClickHouse ADBC driver. It downloads a prebuilt driver into thipR's user-data
+folder, reuses a working installation, and leaves R library paths unchanged.
+It uses an existing `dbc` installer or bootstraps one using Python 3 with venv
+and pip. Network access is required for a new installation.
+
+You can choose a folder with `thipR::thip_install_driver(path = "~/my-drivers")`.
+Files persist only if the platform preserves that folder across server restarts
+and rebuilds. In later sessions, the default folder is found automatically;
+for a custom folder pass `driver = "~/my-drivers"` when connecting.
+See [Start here](https://songyosr.github.io/thipR/articles/start-here.html)
+for configuration and the optional HTTP backend.
+
 Installing thipR does not grant THIP database access; credentials come from the
 THIP platform. Never put credentials in notebook cells or source files.
 
@@ -38,8 +50,8 @@ library(thipR)
 library(dplyr)
 
 # Once, unless the platform supplies your database settings:
-# thip_setup()
-con <- thip_connect()
+# thip_setup(backend = "adbc")
+con <- thip_connect(backend = "adbc")
 
 # The yearly tables as one query, with dates converted.
 admissions <- thip_table(

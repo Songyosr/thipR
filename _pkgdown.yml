@@ -33,6 +33,7 @@ redirects:
 reference:
 - title: Setup and sources
   contents:
+  - thip_install_driver
   - thip_setup
   - thip_connect
   - thip_connect_example

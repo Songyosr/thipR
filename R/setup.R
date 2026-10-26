@@ -61,6 +61,10 @@
 #' | "Input unavailable or cancelled" | A prompt was cancelled or could not be shown, for example outside an interactive notebook cell. Nothing was saved; run setup in a notebook cell. |
 #' | No masked password box outside Jupyter | In RStudio or a terminal, install the `askpass` package for masked entry. |
 #'
+#' With `backend = "adbc"` and verification enabled, setup checks that the driver
+#' can be loaded before prompting for credentials. It never downloads a driver;
+#' run [thip_install_driver()] separately if the platform does not supply one.
+#'
 #' @md
 #' @inheritParams thip_connect
 #' @param overwrite Replace existing THIP entries? Defaults to `FALSE`.
@@ -85,7 +89,9 @@ thip_setup <- function(host = Sys.getenv("THIP_DB_HOST"),
                        password = Sys.getenv("THIP_DB_PASSWORD"),
                        scheme = Sys.getenv("THIP_DB_SCHEME", "http"),
                        overwrite = FALSE, verify = TRUE,
-                       path = Sys.getenv("R_ENVIRON_USER", "~/.Renviron")) {
+                       path = Sys.getenv("R_ENVIRON_USER", "~/.Renviron"),
+                       backend = c("http", "adbc"), driver = NULL) {
+  backend <- match.arg(backend)
   for (name in c("overwrite", "verify")) {
     value <- get(name)
     if (!is.logical(value) || length(value) != 1L || is.na(value))
@@ -95,6 +101,7 @@ thip_setup <- function(host = Sys.getenv("THIP_DB_HOST"),
   if (any(.thip_environ_lines(target$lines)) && !overwrite)
     stop("THIP configuration already exists. Use overwrite = TRUE to replace it.",
          call. = FALSE)
+  if (backend == "adbc" && verify) .load_adbc_driver(driver)
   host <- .setup_input(host, "Database host: ")
   user <- .setup_input(user, "Database username: ")
   password <- .setup_input(password, "Database password: ", secret = TRUE)
@@ -106,7 +113,8 @@ thip_setup <- function(host = Sys.getenv("THIP_DB_HOST"),
   assignments <- paste0(names(values), "=", vapply(values, .environ_quote, character(1)))
   lines <- c(target$lines[!.thip_environ_lines(target$lines)], assignments)
   if (verify) {
-    con <- .connect_checked(config)
+    con <- if (backend == "http") .connect_checked(config) else
+      .connect_checked(config, backend, driver)
     DBI::dbDisconnect(con)
   }
   .write_user_environ(target, lines)

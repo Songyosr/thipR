@@ -22,7 +22,7 @@ REFERENCES = {"collect.thip_window_plan", "icd_flag", "thip_collect", "thip_colu
               "thip_connect", "thip_disconnect", "thip_filter_icd", "thip_setup",
               "thip_table", "thip_tables", "thip_window", "thip_date_audit",
               "thip_connect_example", "thip_fields",
-              "thip_source_summary", "thip_run_info"}
+              "thip_source_summary", "thip_run_info", "thip_install_driver"}
 PAGES = {"index", "authors", "404", "articles/index", "reference/index", "news/index",
          "AGENTS"}  # pkgdown renders every root .md; AGENTS.md is public guidance
 PAGES |= {"articles/" + name for name in GUIDES | WEB_ARTICLES | REDIRECTS}

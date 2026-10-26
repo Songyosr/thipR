@@ -70,7 +70,7 @@ test_that("NULL limits inherit without sending an unlimited override", {
 })
 
 test_that("the driver check enforces the minimum, structure and untested warning", {
-  desc <- read.dcf(system.file("DESCRIPTION", package = "thipR"), fields = "Imports")[[1]]
+  desc <- read.dcf(system.file("DESCRIPTION", package = "thipR"), fields = "Suggests")[[1]]
   pin <- regmatches(desc, regexpr("ClickHouseHTTP \\([^)]*\\)", desc))
   expect_identical(pin, paste0("ClickHouseHTTP (>= ", thipR:::.tested_clickhouse_version, ")"))
   slots <- thipR:::.clickhouse_slots

@@ -11,14 +11,21 @@
 #' operator-provisioned read-only database permissions. Do not alter the
 #' returned object's slots or use SQL to override these settings.
 #'
-#' The returned object is a genuine `ClickHouseHTTPConnection`, usable with
-#' `DBI::dbGetQuery()` and `dplyr::tbl()`. Connection setup uses the driver's
+#' Both backends support `DBI::dbGetQuery()` and `dplyr::tbl()`.
+#' The HTTP backend returns a `ClickHouseHTTPConnection`. Its setup uses the driver's
 #' exported connection class because its `dbConnect()` method issues USE and
 #' SET statements. This factory sends SELECT only; all query transport, result
 #' decoding and dbplyr translation remain in the upstream driver. Tested with
 #' ClickHouseHTTP 1.1.2: older versions are refused, a newer version that changes
 #' the connection structure stops with a clear message, and other newer versions
 #' warn once per session.
+#'
+#' The experimental ADBC backend wraps adbi and a prebuilt ClickHouse driver.
+#' It accepts immediate SELECT/WITH queries, without prepared parameters. It
+#' returns signed 64-bit integers as text and rejects unsigned 64-bit results
+#' at or above 2^53; select `toString(column)` for exact values. Use
+#' [thip_table()] for Date32/DateTime64 conversions; raw legacy Date/DateTime
+#' fields may arrive as numbers. See [thip_install_driver()] for installation.
 #'
 #' @param host Database hostname; defaults to THIP_DB_HOST.
 #' @param port HTTP port; defaults to THIP_DB_PORT or 8123.
@@ -30,8 +37,13 @@
 #' @param max_threads Maximum server threads per query, default 2; NULL inherits the platform setting.
 #' @param max_rows Server result row limit; NULL inherits the platform setting.
 #'   Explicit limits must be positive; overflow raises an error, never truncation.
-#' @return A verified ClickHouseHTTP DBI connection.
-#' @importClassesFrom ClickHouseHTTP ClickHouseHTTPConnection
+#' @param backend Connection backend. The existing HTTP backend remains the
+#'   default; use `"adbc"` for the experimental backend without the R arrow package.
+#' @param driver ADBC driver name, manifest or shared-library path, or a directory
+#'   containing `clickhouse.toml`. NULL finds the driver installed by
+#'   [thip_install_driver()] or a platform-provided `clickhouse` driver.
+#' @return A verified DBI connection.
+#' @importClassesFrom DBI DBIConnection DBIResult
 #' @export
 #' @examples
 #' \dontrun{
@@ -46,15 +58,18 @@ thip_connect <- function(host = Sys.getenv("THIP_DB_HOST"),
                          password = Sys.getenv("THIP_DB_PASSWORD"),
                          scheme = Sys.getenv("THIP_DB_SCHEME", "http"),
                          max_seconds = NULL, max_threads = 2L,
-                         max_rows = NULL) {
+                         max_rows = NULL, backend = c("http", "adbc"),
+                         driver = NULL) {
+  backend <- match.arg(backend)
   config <- .connection_config(host, port, database, user, password, scheme,
                                max_seconds, max_threads, max_rows)
-  .connect_checked(config)
+  if (backend == "http") .connect_checked(config) else .connect_checked(config, backend, driver)
 }
 
-.connect_checked <- function(config) {
-  con <- .new_connection(config)
+.connect_checked <- function(config, backend = "http", driver = NULL) {
+  con <- if (backend == "adbc") .new_adbc_connection(config, driver) else .new_connection(config)
   tryCatch(.verify_connection(con, config), error = function(e) {
+    try(DBI::dbDisconnect(con), silent = TRUE)
     stop("THIP connection verification failed. Check the platform configuration, ",
          "network, read-only permissions and driver compatibility. ",
          "Server error details are omitted to avoid exposing credentials or SQL.",
@@ -108,7 +123,7 @@ thip_connect <- function(host = Sys.getenv("THIP_DB_HOST"),
        password = password, https = scheme == "https", settings = settings)
 }
 
-# Minimum matches the Imports entry in DESCRIPTION (tested). Releases in the
+# Minimum matches the Suggests entry in DESCRIPTION (tested). Releases in the
 # tested minor series are accepted silently; newer ones warn once per session.
 .tested_clickhouse_version <- "1.1.2"
 # Slots thipR sets directly when building the connection object.
@@ -147,6 +162,10 @@ thip_connect <- function(host = Sys.getenv("THIP_DB_HOST"),
 }
 
 .new_connection <- function(config) {
+  if (!requireNamespace("ClickHouseHTTP", quietly = TRUE))
+    stop('The HTTP backend needs ClickHouseHTTP. Install it with ',
+         'install.packages("ClickHouseHTTP"), or use backend = "adbc" with ',
+         'thip_install_driver().', call. = FALSE)
   .check_clickhouse_driver()
   # Public exported S4 class; do not patch the driver namespace or shared dbplyr state.
   con <- methods::new("ClickHouseHTTPConnection",
@@ -163,10 +182,10 @@ thip_connect <- function(host = Sys.getenv("THIP_DB_HOST"),
 
 .verify_connection <- function(con, config) {
   checked <- DBI::dbGetQuery(con, paste(
-    "SELECT currentDatabase() AS database, getSetting('readonly') AS readonly,",
-    "getSetting('max_execution_time') AS max_seconds,",
-    "getSetting('max_threads') AS max_threads,",
-    "getSetting('max_result_rows') AS max_rows"))
+    "SELECT currentDatabase() AS database, toString(getSetting('readonly')) AS readonly,",
+    "toString(getSetting('max_execution_time')) AS max_seconds,",
+    "toString(getSetting('max_threads')) AS max_threads,",
+    "toString(getSetting('max_result_rows')) AS max_rows"))
   expected <- c(database = config$database, readonly = "1")
   mapping <- c(max_seconds = "max_execution_time", max_threads = "max_threads", max_rows = "max_result_rows")
   for (label in names(mapping)) if (mapping[[label]] %in% names(config$settings))

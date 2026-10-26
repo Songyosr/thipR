@@ -34,7 +34,7 @@ thip_connect_example <- function() {
 
 # SQL dialect of a connection: THIP's ClickHouse or the synthetic DuckDB example.
 .thip_dialect <- function(con) {
-  if (inherits(con, "ClickHouseHTTPConnection")) return("clickhouse")
+  if (inherits(con, "ClickHouseHTTPConnection") || inherits(con, "ThipAdbcConnection")) return("clickhouse")
   if (isTRUE(attr(con, "thipr_example"))) return("example")
   NA_character_
 }

@@ -43,7 +43,7 @@ thip_run_info <- function(con, tables) {
 .run_versions <- function(con) {
   version_of <- function(pkg) if (nzchar(system.file(package = pkg)))
     as.character(utils::packageVersion(pkg)) else NA_character_
-  driver <- if (identical(.thip_dialect(con), "example")) "duckdb" else "ClickHouseHTTP"
+  driver <- if (identical(.thip_dialect(con), "example")) "duckdb" else if (inherits(con, "ThipAdbcConnection")) "adbi" else "ClickHouseHTTP"
   server <- tryCatch(as.character(DBI::dbGetQuery(con, "SELECT version() AS v")$v[1]),
                      error = function(e) NA_character_)
   stats::setNames(
