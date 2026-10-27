@@ -20,11 +20,17 @@ Invisibly, the absolute path to `clickhouse.toml`. Also selects this
   manifest for the current session via option `thipR.adbc_driver`.
 }
 \description{
-Interim setup helper for platforms that do not yet supply a ClickHouse ADBC
-driver. Downloads the prebuilt driver using `dbc`, with signature verification.
-It does not build Arrow C++ or install the R arrow package.
+Run `thipR::thip_install_driver()` once after installing thipR. This function
+downloads and installs the prebuilt ClickHouse ADBC driver for you, using
+`dbc` with signature verification. No manual driver download or installation
+is needed. It does not build Arrow C++ or install the R arrow package.
 }
 \details{
+This is an interim setup step for platforms that do not yet supply the driver.
+The extra command may become unnecessary when the platform supplies it;
+updated setup guidance will follow.
+
+
 A working existing manifest is reused without downloading or upgrading.
 Fresh installations use ClickHouse driver 0.1.1. An existing broken manifest
 raises an error; use a new destination to repair without replacing a driver
@@ -44,7 +50,7 @@ this installation helper can be skipped.
 }
 \examples{
 \dontrun{
-thip_install_driver()  # Once, unless the platform already supplies the driver
+thip_install_driver()  # Downloads and installs the driver; run once
 con <- thip_connect(backend = "adbc")
 
 # Optional: choose a persistent folder yourself.

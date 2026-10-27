@@ -1,8 +1,13 @@
 #' Install a ClickHouse ADBC driver in a user folder
 #'
-#' Interim setup helper for platforms that do not yet supply a ClickHouse ADBC
-#' driver. Downloads the prebuilt driver using `dbc`, with signature verification.
-#' It does not build Arrow C++ or install the R arrow package.
+#' Run `thipR::thip_install_driver()` once after installing thipR. This function
+#' downloads and installs the prebuilt ClickHouse ADBC driver for you, using
+#' `dbc` with signature verification. No manual driver download or installation
+#' is needed. It does not build Arrow C++ or install the R arrow package.
+#'
+#' This is an interim setup step for platforms that do not yet supply the driver.
+#' The extra command may become unnecessary when the platform supplies it;
+#' updated setup guidance will follow.
 #'
 #' @param path Destination folder. Defaults to the thipR user-data directory
 #'   returned by `tools::R_user_dir("thipR", "data")`, under `adbc`. Choose a
@@ -33,7 +38,7 @@
 #' @export
 #' @examples
 #' \dontrun{
-#' thip_install_driver()  # Once, unless the platform already supplies the driver
+#' thip_install_driver()  # Downloads and installs the driver; run once
 #' con <- thip_connect(backend = "adbc")
 #'
 #' # Optional: choose a persistent folder yourself.

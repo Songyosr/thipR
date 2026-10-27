@@ -30,23 +30,25 @@ inside your THIP account, so run those steps there.
 ## Install or load thipR
 
 > **Temporary setup guidance — update to come.** The ADBC backend is experimental.
-> For now, install the driver separately with `thip_install_driver()` as shown
-> below. These instructions will be updated as the installation workflow is
-> refined. The helper can be skipped when the platform supplies the driver.
+> For now, run `thipR::thip_install_driver()` once after installing thipR.
+> This function downloads and installs the driver for you. This extra command
+> may become unnecessary when the platform supplies the driver. These
+> instructions will be updated as the installation workflow is refined.
 
 Install from GitHub in R. The required R dependencies install automatically:
 
 ```{r install-thip, eval=FALSE}
 install.packages("remotes")  # Once, if needed
 remotes::install_github("Songyosr/thipR")
-thipR::thip_install_driver()
+thipR::thip_install_driver()  # Downloads and installs the database driver
 library(thipR)
 ```
 
-`thip_install_driver()` is an **interim bootstrap** for platforms that do not yet
-supply the ClickHouse ADBC driver. It downloads a prebuilt driver, with signature
-verification, and needs an existing `dbc` executable or Python 3 with venv and pip
-to bootstrap one. It does not require the R arrow package or an Arrow C++ build.
+`thip_install_driver()` handles the driver download and installation; you do not
+need to download or install the driver manually. It is an **interim setup step**
+for platforms that do not yet supply the ClickHouse ADBC driver. It uses `dbc`
+to download and install a prebuilt driver with signature verification. It needs
+an existing `dbc` executable or Python 3 with venv and pip to set one up. It does not require the R arrow package or an Arrow C++ build.
 The smaller R dependencies may still need standard compilation tools when
 installed from source.
 
@@ -129,7 +131,7 @@ nothing is saved and you can simply run `thip_setup(backend = "adbc")` again.
 | Message or symptom | Meaning and what to do |
 |---|---|
 | "THIP configuration already exists" | Setup was done before. Use `thip_connect(backend = "adbc")`, or `thip_setup(backend = "adbc", overwrite = TRUE)` to replace the saved values. |
-| "Cannot load the ClickHouse ADBC driver" | Run `thip_install_driver()` separately, then retry setup. For a custom folder, pass the same `driver` argument to setup and connections. |
+| "Cannot load the ClickHouse ADBC driver" | Run `thip_install_driver()` to download and install the driver, then retry setup. For a custom folder, pass the same `driver` argument to setup and connections. |
 | "THIP connection verification failed" | The host, username or password is wrong, or the database is unreachable. Nothing was saved; run setup again. |
 | "host must be a hostname without a URL, path or credentials" | Enter only the host name, without `http://`, a port or a path. |
 | "Input unavailable or cancelled" | A prompt was cancelled or could not be shown. Run setup in an interactive notebook cell. |
