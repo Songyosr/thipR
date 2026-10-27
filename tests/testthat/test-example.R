@@ -9,7 +9,7 @@ example_source <- function(con) {
 test_that("the example database looks like THIP's inpatient tables", {
   con <- thip_connect_example()
   on.exit(DBI::dbDisconnect(con))
-  expect_identical(thip_tables(con)$name, c("nhso2565", "nhso2566", "nhso2567"))
+  expect_identical(thip_list_tables(con)$name, c("nhso2565", "nhso2566", "nhso2567"))
   cols <- thip_columns(con, "nhso2567")
   expect_identical(cols$name[1:3], c("tran_id", "pid", "sex"))
   expect_true(all(cols$type == "String"))

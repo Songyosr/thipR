@@ -23,7 +23,7 @@ tryCatch({
                        error = function(e) grepl("exceeds max_rows", conditionMessage(e)))
   stopifnot(overflow)
 
-  tables <- thip_tables(con)
+  tables <- thip_list_tables(con)
   stopifnot(all(c("name", "engine") %in% names(tables)))
   stopifnot(!any(endsWith(tables$name, "_local")))
   if (nrow(tables)) {

@@ -20,7 +20,7 @@ WEB_ARTICLES = {"meet-the-data", "database-from-r", "question-to-cohort", "look-
                 "condition-flags", "getting-started", "data-checks", "responsible-use"}
 REFERENCES = {"collect.thip_window_plan", "icd_flag", "thip_collect", "thip_columns",
               "thip_connect", "thip_disconnect", "thip_filter_icd", "thip_setup",
-              "thip_table", "thip_tables", "thip_window", "thip_date_audit",
+              "thip_table", "thip_list_tables", "thip_tables", "thip_window", "thip_date_audit",
               "thip_connect_example", "thip_fields",
               "thip_source_summary", "thip_run_info", "thip_install_driver"}
 PAGES = {"index", "authors", "404", "articles/index", "reference/index", "news/index",

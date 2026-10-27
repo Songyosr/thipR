@@ -15,7 +15,7 @@
 #' @md
 #' @examplesIf requireNamespace("duckdb", quietly = TRUE) && utils::packageVersion("duckdb") >= "1.3.0"
 #' con <- thip_connect_example()
-#' thip_tables(con)
+#' thip_list_tables(con)
 #' DBI::dbDisconnect(con)
 #' @export
 thip_connect_example <- function() {

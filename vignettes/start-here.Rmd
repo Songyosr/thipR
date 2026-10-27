@@ -160,9 +160,15 @@ Jupyter API token is not used by thipR.
 library(thipR)
 library(dplyr)
 con <- thip_connect()
-thip_tables(con)
+# List available tables, then inspect one table
+thip_list_tables(con)
 thip_columns(con, "nhso2568")
 ```
+
+`thip_list_tables()` lists available table names and engines. To work with
+records, use `thip_table(con, tables = "nhso2568")`; it returns a lazy query.
+You can also pass several compatible table names to `thip_table()` to stack
+their rows. The old name `thip_tables()` remains an alias for table discovery.
 
 The connection can only read, and a query that passes the platform's limits on
 time or rows stops with an error rather than returning part of the result;

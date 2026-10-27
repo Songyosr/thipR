@@ -4,12 +4,21 @@
   db
 }
 
-#' List THIP table metadata
+#' List available THIP tables
+#'
+#' Returns table names and engines from the configured database. Storage tables
+#' ending in `_local` are hidden by default. This reads metadata, not table records.
+#'
+#' Use this function to discover available tables, then [thip_table()] to create
+#' a lazy query over one or more selected tables. `thip_tables()` is a
+#' compatibility alias with the same arguments and behavior.
+#'
+#' @md
 #' @param con A connection returned by [thip_connect()].
 #' @param include_local Include storage tables ending in _local? Default FALSE.
 #' @return A data frame of table names and engines; no patient records.
 #' @export
-thip_tables <- function(con, include_local = FALSE) {
+thip_list_tables <- function(con, include_local = FALSE) {
   if (!is.logical(include_local) || length(include_local) != 1L || is.na(include_local))
     stop("include_local must be TRUE or FALSE.", call. = FALSE)
   db <- DBI::dbQuoteString(con, .database(con))
@@ -20,6 +29,10 @@ thip_tables <- function(con, include_local = FALSE) {
   if (!include_local) out <- out[!endsWith(out$name, "_local"), , drop = FALSE]
   out
 }
+
+#' @rdname thip_list_tables
+#' @export
+thip_tables <- thip_list_tables
 
 #' Inspect column metadata without reading table records
 #' @param con A connection returned by [thip_connect()].

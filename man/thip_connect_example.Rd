@@ -26,7 +26,7 @@ Requires duckdb 1.3.0 or later.
 \examples{
 \dontshow{if (requireNamespace("duckdb", quietly = TRUE) && utils::packageVersion("duckdb") >= "1.3.0") withAutoprint(\{ # examplesIf}
 con <- thip_connect_example()
-thip_tables(con)
+thip_list_tables(con)
 DBI::dbDisconnect(con)
 \dontshow{\}) # examplesIf}
 }

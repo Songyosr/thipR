@@ -7,8 +7,13 @@ test_that("discovery uses escaped metadata predicates", {
     data.frame(name = c("example2026", "example2026_local"),
                engine = c("Distributed", "ReplicatedMergeTree"))
   }, .package = "DBI")
-  expect_equal(thip_tables(con)$name, "example2026")
-  expect_equal(nrow(thip_tables(con, include_local = TRUE)), 2L)
+  expect_equal(thip_list_tables(con)$name, "example2026")
+  expect_equal(nrow(thip_list_tables(con, include_local = TRUE)), 2L)
+  expect_identical(thip_tables(con), thip_list_tables(con))
+  expect_identical(thip_tables(con, include_local = TRUE),
+                   thip_list_tables(con, include_local = TRUE))
+  expect_error(thip_list_tables(con, include_local = NA), "TRUE or FALSE")
+  expect_error(thip_tables(con, include_local = NA), "TRUE or FALSE")
   thip_columns(con, "quote'test")
   expect_true(all(grepl("^SELECT .* FROM system[.]", statements)))
   expect_match(tail(statements, 1L), "quote\\'test", fixed = TRUE)

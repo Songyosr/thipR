@@ -28,6 +28,7 @@ articles:
   - articles/data-checks
   - articles/responsible-use
 redirects:
+- ["reference/thip_tables.html", "reference/thip_list_tables.html"]
 - ["articles/thip-sources.html", "articles/question-to-cohort.html"]
 - ["articles/time-windows.html", "articles/look-back-follow-up.html"]
 reference:
@@ -38,7 +39,7 @@ reference:
   - thip_connect
   - thip_connect_example
   - thip_fields
-  - thip_tables
+  - thip_list_tables
   - thip_columns
   - thip_table
   - thip_date_audit

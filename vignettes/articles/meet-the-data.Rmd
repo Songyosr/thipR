@@ -46,10 +46,10 @@ con <- thip_connect_example()
 
 ## One table per fiscal year
 
-`thip_tables()` lists the tables you can read:
+`thip_list_tables()` lists the tables you can read:
 
 ```{r tables}
-thip_tables(con)
+thip_list_tables(con)
 ```
 
 Each table holds one Thai fiscal year. Its name is `nhso` followed by the fiscal
@@ -58,7 +58,7 @@ year 2567 is October 2023 to September 2024.
 
 The example has three years. On THIP you will find tables from `nhso2560`
 (fiscal year 2017) onwards, and separate tables of COVID-19 vaccinations.
-`thip_tables()` hides tables whose names end in `_local`; if you see them in
+`thip_list_tables()` hides tables whose names end in `_local`; if you see them in
 another tool, they are storage pieces of the same data, so use the names without
 `_local`.
 

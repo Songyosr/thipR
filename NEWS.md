@@ -1,5 +1,8 @@
 # thipR (development version)
 
+- Rename table discovery to `thip_list_tables()` for clarity. `thip_tables()`
+  remains a compatibility alias with the same arguments and behavior.
+
 - ADBC is now the default backend for `thip_setup()` and `thip_connect()`.
   The backend remains experimental, with required R dependencies installed
   automatically and no mandatory R arrow dependency. To continue using the
