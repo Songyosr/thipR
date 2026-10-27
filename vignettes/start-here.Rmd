@@ -64,7 +64,7 @@ For a custom destination:
 ```{r driver-location, eval=FALSE}
 thip_install_driver(path = "~/my-drivers")
 # Use this folder explicitly in later sessions:
-con <- thip_connect(backend = "adbc", driver = "~/my-drivers")
+con <- thip_connect(driver = "~/my-drivers")
 ```
 
 The helper is temporary as a setup workaround; the installed files are not
@@ -73,8 +73,8 @@ Confirm persistent storage with your platform team, especially for server
 rebuilds. The helper does not edit `.libPaths()`, `.Renviron` or `.Rprofile`;
 R package library configuration is a separate platform concern.
 
-The ADBC backend is experimental and selected with `backend = "adbc"` in setup
-and connections. Setup checks for the driver before asking for credentials and
+ADBC is the default backend for `thip_setup()` and `thip_connect()`. It remains
+experimental; no `backend` argument is needed for the steps below. Setup checks for the driver before asking for credentials and
 prints the installation command if it is missing; it never downloads drivers.
 SELECT/WITH queries run immediately; prepared parameters are
 not supported. Signed 64-bit integers are returned as text. Unsigned 64-bit
@@ -82,8 +82,8 @@ values at or above 2^53 raise an error; select `toString(column)` for exact valu
 Use `thip_table()` date conversions (Date32/DateTime64); raw legacy ClickHouse
 Date/DateTime fields may be returned as numbers by the driver.
 
-The existing HTTP backend remains the default for compatibility. To use it,
-install the optional dependency separately:
+The HTTP backend is available as an explicit alternative. To use it, install
+the optional dependency and select `backend = "http"`:
 
 ```{r optional-http, eval=FALSE}
 install.packages("ClickHouseHTTP")  # May also install R arrow
@@ -101,12 +101,18 @@ guides are on the website.
 
 ## Configure once, connect each session
 
+**Already configured? Skip setup and continue to `thip_connect()`.** Run
+`thip_setup()` only when saving your database settings for the first time.
+Updating thipR or installing its driver does not require repeating setup.
+If the platform already supplies your database settings, skip setup too.
+
 ```{r configure, eval=FALSE}
 library(thipR)
-thip_setup(backend = "adbc")
+thip_setup()
 ```
 
-Run this once, in a notebook cell inside your THIP account. You will see, in order:
+For first-time setup, run this in a notebook cell inside your THIP account.
+Values already supplied by the platform are not prompted. You will see, in order:
 
 1. **Two text prompts**: `Database host:` and then `Database username:`. Enter the
    values provided by the THIP team. Port `8123`, database `thip` and scheme
@@ -117,20 +123,28 @@ Run this once, in a notebook cell inside your THIP account. You will see, in ord
    permissions and loaded in this session."
 
 ```
-thip_setup(backend = "adbc")
+thip_setup()
 #> Database host: <host provided by the THIP team>
 #> Database username: <your database username>
 #> Database password: (masked box)
 #> THIP configuration saved with owner-only permissions and loaded in this session.
 ```
 
+If setup says **"THIP configuration already exists"**, your saved settings were
+left unchanged. Continue to `thip_connect()`. To deliberately replace the saved
+settings, run:
+
+```{r replace-configuration, eval=FALSE}
+thip_setup(overwrite = TRUE)
+```
+
 Setup saves six `THIP_DB_*` lines to your `~/.Renviron` with owner-only
-permissions. In later sessions, call `thip_connect(backend = "adbc")` only. If the check fails,
-nothing is saved and you can simply run `thip_setup(backend = "adbc")` again.
+permissions. In later sessions, call `thip_connect()` only. If the check fails,
+nothing is saved and you can simply run `thip_setup()` again.
 
 | Message or symptom | Meaning and what to do |
 |---|---|
-| "THIP configuration already exists" | Setup was done before. Use `thip_connect(backend = "adbc")`, or `thip_setup(backend = "adbc", overwrite = TRUE)` to replace the saved values. |
+| "THIP configuration already exists" | Setup was done before. Use `thip_connect()`, or `thip_setup(overwrite = TRUE)` to replace the saved values. |
 | "Cannot load the ClickHouse ADBC driver" | Run `thip_install_driver()` to download and install the driver, then retry setup. For a custom folder, pass the same `driver` argument to setup and connections. |
 | "THIP connection verification failed" | The host, username or password is wrong, or the database is unreachable. Nothing was saved; run setup again. |
 | "host must be a hostname without a URL, path or credentials" | Enter only the host name, without `http://`, a port or a path. |
@@ -145,7 +159,7 @@ Jupyter API token is not used by thipR.
 ```{r connect, eval=FALSE}
 library(thipR)
 library(dplyr)
-con <- thip_connect(backend = "adbc")
+con <- thip_connect()
 thip_tables(con)
 thip_columns(con, "nhso2568")
 ```
@@ -168,7 +182,7 @@ After disconnecting, restart R and run this small query without reinstalling
 the package or running the driver helper. It does not read stored records:
 
 ```{r check-installation, eval=FALSE}
-con <- thipR::thip_connect(backend = "adbc")
+con <- thipR::thip_connect()
 DBI::dbGetQuery(con, "SELECT 1 AS ok")  # Expect one row: ok = 1
 DBI::dbDisconnect(con)
 ```

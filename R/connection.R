@@ -37,8 +37,9 @@
 #' @param max_threads Maximum server threads per query, default 2; NULL inherits the platform setting.
 #' @param max_rows Server result row limit; NULL inherits the platform setting.
 #'   Explicit limits must be positive; overflow raises an error, never truncation.
-#' @param backend Connection backend. The existing HTTP backend remains the
-#'   default; use `"adbc"` for the experimental backend without the R arrow package.
+#' @param backend Connection backend. Defaults to `"adbc"`, the experimental
+#'   backend without the R arrow package. Use `"http"` for the optional
+#'   ClickHouseHTTP backend.
 #' @param driver ADBC driver name, manifest or shared-library path, or a directory
 #'   containing `clickhouse.toml`. NULL finds the driver installed by
 #'   [thip_install_driver()] or a platform-provided `clickhouse` driver.
@@ -58,15 +59,15 @@ thip_connect <- function(host = Sys.getenv("THIP_DB_HOST"),
                          password = Sys.getenv("THIP_DB_PASSWORD"),
                          scheme = Sys.getenv("THIP_DB_SCHEME", "http"),
                          max_seconds = NULL, max_threads = 2L,
-                         max_rows = NULL, backend = c("http", "adbc"),
+                         max_rows = NULL, backend = c("adbc", "http"),
                          driver = NULL) {
   backend <- match.arg(backend)
   config <- .connection_config(host, port, database, user, password, scheme,
                                max_seconds, max_threads, max_rows)
-  if (backend == "http") .connect_checked(config) else .connect_checked(config, backend, driver)
+  .connect_checked(config, backend, driver)
 }
 
-.connect_checked <- function(config, backend = "http", driver = NULL) {
+.connect_checked <- function(config, backend = "adbc", driver = NULL) {
   con <- if (backend == "adbc") .new_adbc_connection(config, driver) else .new_connection(config)
   tryCatch(.verify_connection(con, config), error = function(e) {
     try(DBI::dbDisconnect(con), silent = TRUE)

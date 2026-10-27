@@ -44,18 +44,18 @@ change R library paths or startup files.
 The default location is found automatically in later R sessions. For a custom
 location, pass that folder as `driver` to [thip_connect()] and [thip_setup()],
 or set `options(thipR.adbc_driver = "path/to/clickhouse.toml")` in each session.
-Use `backend = "adbc"`; the HTTP backend remains available separately through
-the optional ClickHouseHTTP package. If the platform supplies the ADBC driver,
+ADBC is the default backend. Use `backend = "http"` with the optional
+ClickHouseHTTP package to select the HTTP backend. If the platform supplies the ADBC driver,
 this installation helper can be skipped.
 }
 \examples{
 \dontrun{
 thip_install_driver()  # Downloads and installs the driver; run once
-con <- thip_connect(backend = "adbc")
+con <- thip_connect()
 
 # Optional: choose a persistent folder yourself.
 thip_install_driver(path = "~/my-drivers")
 # In subsequent sessions:
-con <- thip_connect(backend = "adbc", driver = "~/my-drivers")
+con <- thip_connect(driver = "~/my-drivers")
 }
 }

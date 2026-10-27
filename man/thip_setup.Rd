@@ -14,7 +14,7 @@ thip_setup(
   overwrite = FALSE,
   verify = TRUE,
   path = Sys.getenv("R_ENVIRON_USER", "~/.Renviron"),
-  backend = c("http", "adbc"),
+  backend = c("adbc", "http"),
   driver = NULL
 )
 }
@@ -39,8 +39,9 @@ thip_setup(
 otherwise \verb{~/.Renviron}. Its parent directory must exist. Keep it outside
 project repositories. A custom path needs corresponding R startup setup.}
 
-\item{backend}{Connection backend. The existing HTTP backend remains the
-default; use `"adbc"` for the experimental backend without the R arrow package.}
+\item{backend}{Connection backend. Defaults to `"adbc"`, the experimental
+backend without the R arrow package. Use `"http"` for the optional
+ClickHouseHTTP backend.}
 
 \item{driver}{ADBC driver name, manifest or shared-library path, or a directory
 containing `clickhouse.toml`. NULL finds the driver installed by
@@ -79,6 +80,11 @@ environment unchanged. \code{verify = FALSE} saves syntactically valid settings
 without contacting the DB; it does not establish that they work.
 }
 \section{First run in a THIP notebook}{
+
+If your database settings are already saved or supplied by the platform, skip
+setup and use \code{\link[=thip_connect]{thip_connect()}}. Updating thipR or installing its driver does
+not require repeating setup. To deliberately replace saved settings, use
+\code{thip_setup(overwrite = TRUE)}.
 
 Run \code{thip_setup()} once, in a notebook cell inside your THIP account. You will
 see, in order:

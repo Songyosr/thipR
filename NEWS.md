@@ -1,8 +1,9 @@
 # thipR (development version)
 
-- Experimental ADBC backend (`backend = "adbc"`) with required R dependencies
-  installed automatically and no mandatory R arrow dependency. ClickHouseHTTP
-  is now optional; the HTTP connection default is retained for compatibility.
+- ADBC is now the default backend for `thip_setup()` and `thip_connect()`.
+  The backend remains experimental, with required R dependencies installed
+  automatically and no mandatory R arrow dependency. To continue using the
+  optional ClickHouseHTTP backend, explicitly select `backend = "http"`.
 - New `thip_install_driver()` bootstraps a prebuilt ClickHouse ADBC driver into a
   user-data folder, accepts a custom `path`, and reuses working installations.
   This interim helper leaves package libraries and startup files unchanged.

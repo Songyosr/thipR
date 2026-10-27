@@ -1,8 +1,9 @@
 adbc_stub <- function() methods::new("ThipAdbcConnection", inner = NULL, info = list())
 
-test_that("ADBC is recognized without changing the default backend", {
+test_that("ADBC is recognized and is the default backend", {
   expect_identical(.thip_dialect(adbc_stub()), "clickhouse")
-  expect_identical(eval(formals(thip_connect)$backend), c("http", "adbc"))
+  expect_identical(eval(formals(thip_connect)$backend), c("adbc", "http"))
+  expect_identical(eval(formals(thip_setup)$backend), c("adbc", "http"))
   expect_identical(dbplyr::dbplyr_edition(adbc_stub()), 2L)
 })
 
@@ -44,4 +45,16 @@ test_that("unsupported writes and preparation fail without opening a result", {
   expect_error(DBI::dbSendQuery(con,"CREATE TABLE anything (x Int32)"),"SELECT/WITH")
   expect_error(DBI::dbSendQuery(con,"SELECT 1",immediate=FALSE),"Prepared")
   expect_error(DBI::dbSendQuery(con,"SELECT ?",params=list(1)),"Prepared")
+})
+
+
+test_that("connections default to ADBC and retain explicit HTTP selection", {
+  local_mocked_bindings(
+    .new_adbc_connection = function(config, driver) adbc_stub(),
+    .new_connection = function(config) structure(list(), class = "http_stub"),
+    .verify_connection = function(...) TRUE)
+  connect <- function(...) thip_connect(host="example.invalid",user="test",
+    password="synthetic", ...)
+  expect_s4_class(connect(), "ThipAdbcConnection")
+  expect_s3_class(connect(backend="http"), "http_stub")
 })

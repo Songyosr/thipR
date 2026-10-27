@@ -51,7 +51,7 @@ test_that("connection failures do not echo backend error contents", {
     stop("synthetic-secret SQL details")
   })
   err <- tryCatch(thip_connect(host = "example.invalid", user = "example",
-                              password = "synthetic-secret"), error = identity)
+                              password = "synthetic-secret", backend = "http"), error = identity)
   expect_s3_class(err, "error")
   expect_match(conditionMessage(err), "verification failed")
   expect_false(grepl("synthetic-secret", conditionMessage(err), fixed = TRUE))

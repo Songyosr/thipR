@@ -77,7 +77,7 @@ test_that("broken drivers and concurrent installers are never replaced", {
   expect_error(thip_install_driver(character()), "non-empty string")
 })
 
-test_that("setup forwards explicit ADBC configuration before saving", {
+test_that("setup defaults to ADBC and forwards a custom driver before saving", {
   root <- withr::local_tempdir()
   withr::local_envvar(c(THIP_DB_HOST=NA, THIP_DB_PORT=NA, THIP_DB_NAME=NA,
     THIP_DB_USER=NA, THIP_DB_PASSWORD=NA, THIP_DB_SCHEME=NA))
@@ -89,7 +89,7 @@ test_that("setup forwards explicit ADBC configuration before saving", {
   })
   file <- file.path(root, "Renviron")
   expect_error(thip_setup(host="example.invalid",user="test",password="synthetic",
-    backend="adbc",driver="chosen.toml",path=file), "Stop before saving")
+    driver="chosen.toml",path=file), "Stop before saving")
   expect_false(file.exists(file))
 })
 
@@ -98,7 +98,7 @@ test_that("setup reports missing drivers before prompting and never installs the
   root <- withr::local_tempdir()
   local_mocked_bindings(.setup_input = function(...) stop("Must not prompt"),
     thip_install_driver = function(...) stop("Must not install"))
-  expect_error(thip_setup(host="",user="",password="",backend="adbc",
+  expect_error(thip_setup(host="",user="",password="",
     driver=file.path(root,"missing-driver.toml"),path=file.path(root,"Renviron")),
     "Run thip_install_driver()", fixed=TRUE)
   expect_false(file.exists(file.path(root,"Renviron")))

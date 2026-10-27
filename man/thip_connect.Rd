@@ -14,7 +14,7 @@ thip_connect(
   max_seconds = NULL,
   max_threads = 2L,
   max_rows = NULL,
-  backend = c("http", "adbc"),
+  backend = c("adbc", "http"),
   driver = NULL
 )
 }
@@ -38,8 +38,9 @@ thip_connect(
 \item{max_rows}{Server result row limit; NULL inherits the platform setting.
 Explicit limits must be positive; overflow raises an error, never truncation.}
 
-\item{backend}{Connection backend. The existing HTTP backend remains the
-default; use `"adbc"` for the experimental backend without the R arrow package.}
+\item{backend}{Connection backend. Defaults to `"adbc"`, the experimental
+backend without the R arrow package. Use `"http"` for the optional
+ClickHouseHTTP backend.}
 
 \item{driver}{ADBC driver name, manifest or shared-library path, or a directory
 containing `clickhouse.toml`. NULL finds the driver installed by

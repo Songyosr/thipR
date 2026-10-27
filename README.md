@@ -50,8 +50,8 @@ library(thipR)
 library(dplyr)
 
 # Once, unless the platform supplies your database settings:
-# thip_setup(backend = "adbc")
-con <- thip_connect(backend = "adbc")
+# thip_setup()
+con <- thip_connect()
 
 # The yearly tables as one query, with dates converted.
 admissions <- thip_table(

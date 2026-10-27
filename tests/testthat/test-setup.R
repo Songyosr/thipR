@@ -178,7 +178,7 @@ test_that("new saved values are consumed by the existing connection with argumen
   path <- local_setup_files()
   expect_message(setup_fixture(path), "saved")
   seen <- NULL
-  local_mocked_bindings(.connect_checked = function(config) { seen <<- config; TRUE })
+  local_mocked_bindings(.connect_checked = function(config, backend, driver) { seen <<- config; TRUE })
   expect_true(thip_connect())
   expect_identical(seen$host, "example.invalid")
   expect_identical(seen$password, "synthetic-secret")

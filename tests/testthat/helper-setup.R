@@ -7,7 +7,7 @@ setup_values <- function() {
 setup_fixture <- function(path, ...) {
   args <- list(host = "example.invalid", port = "8123", database = "example",
                user = "synthetic-user", password = "synthetic-secret",
-               scheme = "https", path = path, verify = FALSE)
+               scheme = "https", path = path, verify = FALSE, backend = "http")
   updates <- list(...)
   args[names(updates)] <- updates
   do.call(thip_setup, args)

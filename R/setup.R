@@ -28,6 +28,11 @@
 #' without contacting the DB; it does not establish that they work.
 #'
 #' @section First run in a THIP notebook:
+#' If your database settings are already saved or supplied by the platform, skip
+#' setup and use [thip_connect()]. Updating thipR or installing its driver does
+#' not require repeating setup. To deliberately replace saved settings, use
+#' `thip_setup(overwrite = TRUE)`.
+#'
 #' Run `thip_setup()` once, in a notebook cell inside your THIP account. You will
 #' see, in order:
 #'
@@ -90,7 +95,7 @@ thip_setup <- function(host = Sys.getenv("THIP_DB_HOST"),
                        scheme = Sys.getenv("THIP_DB_SCHEME", "http"),
                        overwrite = FALSE, verify = TRUE,
                        path = Sys.getenv("R_ENVIRON_USER", "~/.Renviron"),
-                       backend = c("http", "adbc"), driver = NULL) {
+                       backend = c("adbc", "http"), driver = NULL) {
   backend <- match.arg(backend)
   for (name in c("overwrite", "verify")) {
     value <- get(name)
@@ -113,8 +118,7 @@ thip_setup <- function(host = Sys.getenv("THIP_DB_HOST"),
   assignments <- paste0(names(values), "=", vapply(values, .environ_quote, character(1)))
   lines <- c(target$lines[!.thip_environ_lines(target$lines)], assignments)
   if (verify) {
-    con <- if (backend == "http") .connect_checked(config) else
-      .connect_checked(config, backend, driver)
+    con <- .connect_checked(config, backend, driver)
     DBI::dbDisconnect(con)
   }
   .write_user_environ(target, lines)
