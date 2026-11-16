@@ -1,5 +1,10 @@
 # thipR (development version)
 
+- Shorten the data-orientation and database-workflow guides. The orientation
+  guide includes an explicitly authorized, dated snapshot of yearly stored-row
+  counts; all record examples remain synthetic. The workflow guide explains
+  discovery, `tbl()` and `thip_table()` without repeating the data dictionary.
+
 - Rename table discovery to `thip_list_tables()` for clarity. `thip_tables()`
   remains a compatibility alias with the same arguments and behavior.
 

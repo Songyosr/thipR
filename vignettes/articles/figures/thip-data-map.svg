@@ -30,21 +30,21 @@
   <text class="h" x="262" y="32">Inside a table: one row per inpatient record</text>
   <g>
     <rect x="262" y="48" width="478" height="30" rx="6" fill="#e3f0ff"/>
-    <text class="t" x="274" y="68">Identifiers</text><text class="m" x="452" y="68">tran_id, pid</text><text class="n" x="728" y="68" text-anchor="end">2</text>
+    <text class="t" x="274" y="68">Identifiers</text><text class="m" x="452" y="68">tran_id, pid</text>
     <rect x="262" y="84" width="478" height="30" rx="6" fill="#e6f6ee"/>
-    <text class="t" x="274" y="104">Person</text><text class="m" x="452" y="104">sex, marry_status, age_y, weight</text><text class="n" x="728" y="104" text-anchor="end">4</text>
+    <text class="t" x="274" y="104">Person</text><text class="m" x="452" y="104">sex, marry_status, age_y, weight</text>
     <rect x="262" y="120" width="478" height="30" rx="6" fill="#fdf3e1"/>
-    <text class="t" x="274" y="140">Admission and discharge</text><text class="m" x="452" y="140">dateadm, datedsc, los, dischs …</text><text class="n" x="728" y="140" text-anchor="end">9</text>
+    <text class="t" x="274" y="140">Admission and discharge</text><text class="m" x="452" y="140">dateadm, datedsc, los, dischs …</text>
     <rect x="262" y="156" width="478" height="30" rx="6" fill="#f3ecfb"/>
-    <text class="t" x="274" y="176">Payment group</text><text class="m" x="452" y="176">drg_nhso, rw_nhso, adjrw_nhso</text><text class="n" x="728" y="176" text-anchor="end">3</text>
+    <text class="t" x="274" y="176">Payment group</text><text class="m" x="452" y="176">drg_nhso, rw_nhso, adjrw_nhso</text>
     <rect x="262" y="192" width="478" height="30" rx="6" fill="#ffe8e5"/>
-    <text class="t" x="274" y="212">Diagnoses</text><text class="m" x="452" y="212">pdx, sdx1 … sdx20, sdx_index</text><text class="n" x="728" y="212" text-anchor="end">22</text>
+    <text class="t" x="274" y="212">Diagnoses</text><text class="m" x="452" y="212">pdx, sdx1 … sdx20, sdx_index</text>
     <rect x="262" y="228" width="478" height="30" rx="6" fill="#fff0f6"/>
-    <text class="t" x="274" y="248">Procedures</text><text class="m" x="452" y="248">proc1 … proc21</text><text class="n" x="728" y="248" text-anchor="end">21</text>
+    <text class="t" x="274" y="248">Procedures</text><text class="m" x="452" y="248">proc1 … proc21</text>
     <rect x="262" y="264" width="478" height="30" rx="6" fill="#eceff1"/>
-    <text class="t" x="274" y="284">Death</text><text class="m" x="452" y="284">death_date, dcause_oth …</text><text class="n" x="728" y="284" text-anchor="end">4</text>
+    <text class="t" x="274" y="284">Death</text><text class="m" x="452" y="284">death_date, dcause_oth …</text>
     <rect x="262" y="300" width="478" height="30" rx="6" fill="#e0f4f5"/>
-    <text class="t" x="274" y="320">Geography</text><text class="m" x="452" y="320">health_region, superdistrict</text><text class="n" x="728" y="320" text-anchor="end">2</text>
+    <text class="t" x="274" y="320">Geography</text><text class="m" x="452" y="320">health_region, superdistrict</text>
   </g>
-  <text class="s" x="262" y="350">Numbers on the right: columns in each group. All columns are stored as text.</text>
+  <text class="s" x="262" y="350">Selected column groups; use thip_columns() for the full current schema.</text>
 </svg>
